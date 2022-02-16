@@ -191,8 +191,8 @@ const resolversMutation = {
             let _object = new District({
                 legalObject, branchs, cashiers, supervisors, name
             });
-            await District.create(_object)
-            return 'OK'
+            _object = await District.create(_object)
+            return _object._id
         }
         return 'ERROR'
     },

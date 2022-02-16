@@ -194,7 +194,6 @@ const signinuserGQL = (req, res) => {
     return new Promise((resolve) => {
         passport.authenticate('local', async function (err, user) {
             try{
-                console.log(1)
                 let error
                 if(user.error){
                     error = user.error

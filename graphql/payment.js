@@ -171,7 +171,7 @@ const resolversMutation = {
                     await Cashbox.updateOne({_id: cashboxes[i]}, {endPayment})
                 }
 
-                _object.qr = await QRCode.toDataURL(`${process.env.URL.trim()}/payment/${_object._id}`)
+                _object.qr = await QRCode.toDataURL(`${process.env.URL.trim()}/payment/receipt/${_object._id}`)
 
                 _object = await Payment.create(_object)
                 return _object._id
@@ -199,7 +199,7 @@ const resolversMutation = {
                 cashboxes,
                 password
             });
-            _object.qr = await QRCode.toDataURL(`${process.env.URL.trim()}/payment/${_object._id}`)
+            _object.qr = await QRCode.toDataURL(`${process.env.URL.trim()}/payment/receipt/${_object._id}`)
             _object = await Payment.create(_object)
             setTimeout(async () => await Payment.deleteOne({_id: _object._id, status: 'Обработка'}), 30*60*1000)
             return await paymentPayBox({_id: _object._id, amount, password})

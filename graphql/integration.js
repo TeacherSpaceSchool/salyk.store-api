@@ -90,8 +90,8 @@ const resolversMutation = {
             let _object = new Integration({
                 legalObject, IP, password
             });
-            await Integration.create(_object)
-            return 'OK'
+            _object = await Integration.create(_object)
+            return _object._id
         }
         return 'ERROR'
     },

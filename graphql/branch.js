@@ -157,14 +157,15 @@ const resolversMutation = {
                 _object.syncMsg = 'Нет ИНН'
             }
 
-            await Branch.create(_object)
+            _object = await Branch.create(_object)
             let history = new History({
                 who: user._id,
                 where: _object._id,
                 what: 'Создание'
             });
             await History.create(history)
-            return 'OK'
+            console.log(_object._id)
+            return _object._id
         }
         return 'ERROR'
     },
