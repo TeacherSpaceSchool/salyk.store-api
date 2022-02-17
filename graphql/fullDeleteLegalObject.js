@@ -3,348 +3,105 @@ const IntegrationObject = require('../models/integrationObject');
 const Integration = require('../models/integration');
 const CategoryLegalObject = require('../models/categoryLegalObject');
 const WorkShift = require('../models/workshift');
+const Sale = require('../models/sale');
+const WithdrawHistory = require('../models/withdrawHistory');
+const DepositHistory = require('../models/depositHistory');
+const Client = require('../models/client');
+const Consignation = require('../models/consignation');
+const Prepayment = require('../models/prepayment');
+const Branch = require('../models/branch');
+const Item = require('../models/item');
+const Report = require('../models/report');
+const Cashbox = require('../models/cashbox');
+const Review = require('../models/review');
+const Payment = require('../models/payment');
 const User = require('../models/user');
 const History = require('../models/history');
 const District = require('../models/district');
-const {tpDataByINNforBusinessActivity, registerTaxPayer} = require('../module/kkm');
-const {ugnsTypes, taxpayerTypes} = require('../module/const');
 
-const type = `
-  type LegalObject {
-    _id: ID
-    createdAt: Date
-    name: String
-    inn: String
-    email: [String]
-    address: String
-    phone: [String]
-    status: String
-    taxpayerType: String
-    ugns: String
-    responsiblePerson: String
-    del: Boolean
-    ofd: Boolean
-    sync: Boolean
-    syncMsg: String
-    rateTaxe: String
-    ndsType: String
-    nspType: String
-  }
-  type INN {
-    inn: String
-    rayonCode: String
-    fullName: String
-    ZIP: String
-    fullAddress: String
-    message: String
-  }
-`;
-
-const query = `
-    tpDataByINNforBusinessActivity(inn: String): INN
-    legalObjects(skip: Int, search: String): [LegalObject]
-    legalObjectsCount(search: String): Int
-    legalObjectsTrash(skip: Int, search: String): [LegalObject]
-    legalObject(_id: ID!): LegalObject
-`;
+const {ugnsTypes, pTypes, bTypes, taxpayerTypes} = require('../module/const');
+const {registerKkm, registerSalesPoint, registerTaxPayer} = require('../module/kkm');
 
 const mutation = `
-    addLegalObject(name: String!, rateTaxe: String!, ndsType: String!, nspType: String!, ofd: Boolean!, inn: String!, address: String!, email: [String]!, phone: [String]!, taxpayerType: String!, ugns: String!, responsiblePerson: String!): String
-    setLegalObject(_id: ID!, name: String, rateTaxe: String, ofd: Boolean, address: String, ndsType: String, nspType: String, email: [String], phone: [String], taxpayerType: String, ugns: String, responsiblePerson: String): String
-    onoffLegalObject(_id: ID!): String
-    deleteLegalObject(_id: ID!): String
     fullDeleteLegalObject(_id: ID!): String
-    restoreLegalObject(_id: ID!): String
 `;
 
-const resolvers = {
-    tpDataByINNforBusinessActivity: async(parent, {inn}, {user}) => {
-        if(['admin', 'superadmin', 'оператор'].includes(user.role)) {
-            return tpDataByINNforBusinessActivity(inn)
-        }
-    },
-    legalObjects: async(parent, {skip, search}, {user}) => {
-        if(['admin', 'superadmin'].includes(user.role)||search&&search.length>2&&user.role==='оператор') {
-            return await LegalObject.find({
-                ...search&&search.length?{$or: [{name: {'$regex': search, '$options': 'i'}}, {inn: {'$regex': search, '$options': 'i'}}]}:{},
-                del: {$ne: true},
-            })
-                .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
-                .select('_id createdAt name inn address phone status del sync')
-                .sort('name')
-                .lean()
-        }
-        return []
-    },
-    legalObjectsCount: async(parent, {search}, {user}) => {
-        if(['admin', 'superadmin'].includes(user.role)||search&&search.length>2&&user.role==='оператор') {
-            return await LegalObject.countDocuments({
-                ...search&&search.length?{$or: [{name: {'$regex': search, '$options': 'i'}}, {inn: {'$regex': search, '$options': 'i'}}]}:{},
-                del: {$ne: true},
-            })
-                .lean()
-        }
-        return 0
-    },
-    legalObjectsTrash: async(parent, {skip, search}, {user}) => {
-        if(['admin', 'superadmin'].includes(user.role)) {
-            return await LegalObject.find({
-                ...search&&search.length?{$or: [{name: {'$regex': search, '$options': 'i'}}, {inn: {'$regex': search, '$options': 'i'}}]}:{},
-                del: true
-            })
-                .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
-                .select('_id createdAt name inn address phone status _id del sync')
-                .sort('name')
-                .lean()
-        }
-    },
-    legalObject: async(parent, {_id}, {user}) => {
-        if(['admin', 'superadmin', 'управляющий', 'оператор', 'кассир'].includes(user.role)) {
-            let res = await LegalObject.findOne({
-                ...user.legalObject?{del: {$ne: true}} : {},
-                _id: user.legalObject?user.legalObject:_id
-            })
-                .lean()
-            return user.role==='кассир'?{
-                _id: res._id,
-                ndsType: res.ndsType,
-                nspType: res.nspType
-            }:res
-        }
-    },
-};
-
 const resolversMutation = {
-    addLegalObject: async(parent, {name, rateTaxe, ndsType, nspType, inn, address, phone, taxpayerType, ugns, email, responsiblePerson, ofd}, {user}) => {
-        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add&&name!=='Налогоплательщик'&&!(await LegalObject.findOne({inn}).select('_id').lean())) {
-            let _object = new LegalObject({
-                name,
-                inn,
-                ndsType,
-                nspType,
-                address,
-                phone,
-                status: 'active',
-                taxpayerType,
-                ugns,
-                email,
-                rateTaxe,
-                responsiblePerson,
-                ofd: ['superadmin', 'admin'].includes(user.role)?ofd:true
-            });
-
-            let sync = await registerTaxPayer({
-                tpType: taxpayerTypes[taxpayerType],
-                inn,
-                name,
-                ugns: ugnsTypes[ugns],
-                legalAddress: address,
-                responsiblePerson,
-                regType: '1'
-            })
-            _object.sync = sync.sync
-            _object.syncMsg = sync.syncMsg
-
-            _object = await LegalObject.create(_object)
-            let categoryLegalObject = new CategoryLegalObject({
-                categorys: [],
-                legalObject: _object._id
-            });
-            await CategoryLegalObject.create(categoryLegalObject)
-            let history = new History({
-                who: user._id,
-                where: _object._id,
-                what: 'Создание'
-            });
-            await History.create(history)
-            return _object._id
-        }
-        return 'ERROR'
-    },
-    setLegalObject: async(parent, {_id, rateTaxe, name, ndsType, nspType, address, phone, email, taxpayerType, ugns, ofd, responsiblePerson}, {user}) => {
-        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {
-            let object = await LegalObject.findById(_id)
-            let history = new History({
-                who: user._id,
-                where: object._id,
-                what: ''
-            });
-            if(name&&name!=='Налогоплательщик'){
-                history.what = `name:${object.name}→${name};`
-                object.name = name
-            }
-            if(address){
-                history.what = `${history.what} address:${object.address}→${address};`
-                object.address = address
-            }
-            if(ndsType){
-                history.what = `${history.what} ndsType:${object.ndsType}→${ndsType};`
-                object.ndsType = ndsType
-            }
-            if(nspType){
-                history.what = `${history.what} nspType:${object.nspType}→${nspType};`
-                object.nspType = nspType
-            }
-            if(rateTaxe){
-                history.what = `${history.what} rateTaxe:${object.rateTaxe}→${rateTaxe};`
-                object.rateTaxe = rateTaxe
-            }
-            if(phone){
-                history.what = `${history.what} phone:${object.phone}→${phone};`
-                object.phone = phone
-            }
-            if(taxpayerType){
-                history.what = `${history.what} taxpayerType:${object.taxpayerType}→${taxpayerType};`
-                object.taxpayerType = taxpayerType
-            }
-            if(ugns){
-                history.what = `${history.what} ugns:${object.ugns}→${ugns};`
-                object.ugns = ugns
-            }
-            if(responsiblePerson){
-                history.what = `${history.what} responsiblePerson:${object.responsiblePerson}→${responsiblePerson};`
-                object.responsiblePerson = responsiblePerson
-            }
-            if(email){
-                history.what = `${history.what} email:${object.email}→${email};`
-                object.email = email
-            }
-            if(['superadmin', 'admin'].includes(user.role)&&user.add&&ofd!==undefined&&!(await WorkShift.findOne({legalObject: _id, end: null}).select('_id').lean())){
-                history.what = `${history.what} ofd:${object.ofd}→${ofd};`
-                object.ofd = ofd
-            }
-
-            if(name||taxpayerType||ugns||address||responsiblePerson||!object.sync) {
-                let sync = await registerTaxPayer({
-                    tpType: taxpayerTypes[object.taxpayerType],
-                    inn: object.inn,
-                    name: object.name,
-                    ugns: ugnsTypes[object.ugns],
-                    legalAddress: object.address,
-                    responsiblePerson: object.responsiblePerson,
-                    regType: '2'
-                })
-                object.sync = sync.sync
-                object.syncMsg = sync.syncMsg
-            }
-
-            await object.save();
-            await History.create(history)
-            return 'OK'
-        }
-        return 'ERROR'
-    },
-    onoffLegalObject: async(parent, { _id }, {user}) => {
-        if(['admin', 'superadmin'].includes(user.role)&&user.add) {
-            let object = await LegalObject.findOne({_id})
-            object.status = object.status==='active'?'deactive':'active'
-            if(object.status==='deactive')
-                await User.updateMany({legalObject: _id}, {status: 'deactive'})
-            object.save()
-            let history = new History({
-                who: user._id,
-                where: object._id,
-                what: object.status==='active'?'Включение':'Отключение'
-            });
-            await History.create(history)
-            return 'OK'
-        }
-        return 'ERROR'
-    },
     fullDeleteLegalObject: async(parent, { _id }, {user}) => {
         if('superadmin'===user.role) {
+            let legalObject = await LegalObject.findOne({_id}).lean()
+            if (legalObject) {
+                await Integration.deleteOne({legalObject: _id})
+                await IntegrationObject.deleteMany({legalObject: _id})
+                await District.deleteMany({legalObject: _id})
+                await History.deleteMany({where: _id})
+                await Review.deleteMany({legalObject: _id})
+                await Client.deleteMany({legalObject: _id})
+                await Consignation.deleteMany({legalObject: _id})
+                await Prepayment.deleteMany({legalObject: _id})
+                await Payment.deleteMany({legalObject: _id})
+                await WorkShift.deleteMany({legalObject: _id})
+                await Sale.deleteMany({legalObject: _id})
+                await WithdrawHistory.deleteMany({legalObject: _id})
+                await DepositHistory.deleteMany({legalObject: _id})
+                await Item.deleteMany({legalObject: _id})
+                await Report.deleteMany({legalObject: _id})
+                await User.deleteMany({legalObject: _id})
 
+                let sync
+                let cashboxes = await Cashbox.find({legalObject: _id}).lean(), uniqueId
+                for (let i = 0; i < cashboxes.length; i++) {
+                    uniqueId = (await Branch.findById(cashboxes[i].branch).select('uniqueId').lean()).uniqueId
+                    if (uniqueId) {
+                        sync = await registerKkm({
+                            spId: uniqueId,
+                            name: cashboxes[i].name,
+                            number: cashboxes[i]._id.toString(),
+                            regType: '3',
+                            rnmNumber: cashboxes[i].rnmNumber
+                        })
+                        if (!sync.sync)
+                            return 'Error cashboxes'
+                    }
+                }
+                await Cashbox.deleteMany({legalObject: _id})
+                let branchs = await Branch.find({legalObject: _id}).lean()
+                for (let i = 0; i < cashboxes.length; i++) {
+                    uniqueId = (await Branch.findById(cashboxes[i].branch).select('uniqueId').lean()).uniqueId
+                    if (uniqueId) {
+                        let sync = await registerSalesPoint({
+                            tpInn: legalObject.inn,
+                            name: branchs[i].name,
+                            pType: branchs[i].pType === 'Прочее' ? '9999' : pTypes.indexOf(branchs[i].pType),
+                            bType: branchs[i].bType === 'Прочее' ? '9999' : bTypes.indexOf(branchs[i].bType),
+                            ugns: ugnsTypes[branchs[i].ugns],
+                            factAddress: branchs[i].address,
+                            xCoordinate: branchs[i].geo ? branchs[i].geo[0] : null,
+                            yCoordinate: branchs[i].geo ? branchs[i].geo[1] : null,
+                            regType: '3',
+                            uniqueId: branchs[i].uniqueId
+                        })
+                        if (!sync.sync)
+                            return 'Error branchs'
+                    }
+                }
+                await Branch.deleteMany({legalObject: _id})
 
-
-            let object = await LegalObject.findOne({_id})
-            object.del = true
-
-            let sync = await registerTaxPayer({
-                tpType: taxpayerTypes[object.taxpayerType],
-                inn: object.inn,
-                name: object.name,
-                ugns: ugnsTypes[object.ugns],
-                legalAddress: object.address,
-                responsiblePerson: object.responsiblePerson,
-                regType: '3'
-            })
-            object.sync = sync.sync
-            object.syncMsg = sync.syncMsg
-
-            await object.save();
-            await User.updateMany({legalObject: _id}, {status: 'deactive'})
-            await Integration.deleteOne({legalObject: _id})
-            await IntegrationObject.deleteMany({legalObject: _id})
-            await District.deleteMany({legalObject: _id})
-            let history = new History({
-                who: user._id,
-                where: _id,
-                what: 'Удаление'
-            });
-            await History.create(history)
-            return 'OK'
-        }
-        return 'ERROR'
-    },
-    deleteLegalObject: async(parent, { _id }, {user}) => {
-        if(['admin', 'superadmin'].includes(user.role)&&user.add) {
-            let object = await LegalObject.findOne({_id})
-            object.del = true
-
-            let sync = await registerTaxPayer({
-                tpType: taxpayerTypes[object.taxpayerType],
-                inn: object.inn,
-                name: object.name,
-                ugns: ugnsTypes[object.ugns],
-                legalAddress: object.address,
-                responsiblePerson: object.responsiblePerson,
-                regType: '3'
-            })
-            object.sync = sync.sync
-            object.syncMsg = sync.syncMsg
-
-            await object.save();
-            await User.updateMany({legalObject: _id}, {status: 'deactive'})
-            await Integration.deleteOne({legalObject: _id})
-            await IntegrationObject.deleteMany({legalObject: _id})
-            await District.deleteMany({legalObject: _id})
-            let history = new History({
-                who: user._id,
-                where: _id,
-                what: 'Удаление'
-            });
-            await History.create(history)
-            return 'OK'
-        }
-        return 'ERROR'
-    },
-    restoreLegalObject: async(parent, { _id }, {user}) => {
-        if(['admin', 'superadmin'].includes(user.role)&&user.add) {
-            let object = await LegalObject.findOne({_id})
-            object.del = false
-
-            let sync = await registerTaxPayer({
-                tpType: taxpayerTypes[object.taxpayerType],
-                inn: object.inn,
-                name: object.name,
-                ugns: ugnsTypes[object.ugns],
-                legalAddress: object.address,
-                responsiblePerson: object.responsiblePerson,
-                regType: '2'
-            })
-            object.sync = sync.sync
-            object.syncMsg = sync.syncMsg
-
-            await object.save();
-            let history = new History({
-                who: user._id,
-                where: _id,
-                what: 'Восстановление'
-            });
-            await History.create(history)
-            return 'OK'
+                sync = await registerTaxPayer({
+                    tpType: taxpayerTypes[legalObject.taxpayerType],
+                    inn: legalObject.inn,
+                    name: legalObject.name,
+                    ugns: ugnsTypes[legalObject.ugns],
+                    legalAddress: legalObject.address,
+                    responsiblePerson: legalObject.responsiblePerson,
+                    regType: '3'
+                })
+                if (!sync.sync)
+                    return 'Error legalObject'
+                await LegalObject.deleteMany({legalObject: _id})
+                await CategoryLegalObject.deleteMany({legalObject: _id})
+                return 'OK'
+            }
         }
         return 'ERROR'
     }
@@ -352,6 +109,3 @@ const resolversMutation = {
 
 module.exports.resolversMutation = resolversMutation;
 module.exports.mutation = mutation;
-module.exports.type = type;
-module.exports.query = query;
-module.exports.resolvers = resolvers;

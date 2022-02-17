@@ -10,6 +10,7 @@ const Report = require('./report');
 const Category = require('./category');
 const Client = require('./client');
 const ConnectionApplication = require('./connectionApplication');
+const FullDeleteLegalObject = require('./fullDeleteLegalObject');
 const Consignation = require('./consignation');
 const WithdrawHistory = require('./withdrawHistory');
 const History = require('./history');
@@ -105,6 +106,7 @@ const typeDefs = gql`
         ${Category.mutation}
         ${Client.mutation}
         ${ConnectionApplication.mutation}
+        ${FullDeleteLegalObject.mutation}
         ${Error.mutation}
         ${Faq.mutation}
         ${File.mutation}
@@ -215,6 +217,7 @@ const resolvers = {
         ...Statistic.resolversMutation,
         ...Contact.resolversMutation,
         ...ConnectionApplication.resolversMutation,
+        ...FullDeleteLegalObject.resolversMutation,
         ...Blog.resolversMutation,
         ...Branch.resolversMutation,
         ...District.resolversMutation,
