@@ -1,10 +1,8 @@
 const Blog = require('../models/blog');
-const { saveImage, deleteFile, urlMain, saveFile } = require('../module/const');
 
 const type = `
   type Blog {
     _id: ID
-    image: String
     text: String
     name: String
     createdAt: Date
@@ -16,8 +14,8 @@ const query = `
 `;
 
 const mutation = `
-    addBlog(image: Upload!, text: String!, name: String!): Blog
-    setBlog(_id: ID!, image: Upload, text: String, name: String): String
+    addBlog(text: String!, name: String!): Blog
+    setBlog(_id: ID!, text: String, name: String): String
     deleteBlog(_id: ID!): String
 `;
 
@@ -36,13 +34,9 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addBlog: async(parent, {image, text, name}, {user}) => {
+    addBlog: async(parent, {text, name}, {user}) => {
         if(['admin', 'superadmin'].includes(user.role)&&user.add) {
-            let { createReadStream, filename } = await image;
-            let stream = createReadStream()
-            filename = await saveImage(stream, filename)
             let _object = new Blog({
-                image: urlMain+filename,
                 text,
                 name
             });
@@ -50,16 +44,9 @@ const resolversMutation = {
             return _object
         }
     },
-    setBlog: async(parent, {_id, image, text, name}, {user}) => {
+    setBlog: async(parent, {_id, text, name}, {user}) => {
         if(['admin', 'superadmin'].includes(user.role)&&user.add) {
             let object = await Blog.findById(_id)
-            if (image) {
-                let {createReadStream, filename} = await image;
-                let stream = createReadStream()
-                await deleteFile(object.image)
-                filename = await saveImage(stream, filename)
-                object.image = urlMain + filename
-            }
             if(text)object.text = text
             if(name)object.name = name
             await object.save();
@@ -69,8 +56,6 @@ const resolversMutation = {
     },
     deleteBlog: async(parent, { _id }, {user}) => {
         if(['admin', 'superadmin'].includes(user.role)&&user.add) {
-            let object = await Blog.findOne({_id}).select('image').lean()
-            await deleteFile(object.image)
             await Blog.deleteOne({_id})
             return 'OK'
         }

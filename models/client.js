@@ -11,7 +11,6 @@ const ClientSchema = mongoose.Schema({
     address: String,
     info: String,
     inn: String,
-    files: [String],
     del: Boolean
 }, {
     timestamps: true

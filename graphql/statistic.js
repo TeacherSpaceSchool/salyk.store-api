@@ -18,6 +18,7 @@ const WorkShift = require('../models/workshift');
 const Sale = require('../models/sale');
 const Report = require('../models/report');
 const SyncKKM = require('../models/syncKKM');
+const fs = require('fs');
 
 const type = `
     type Statistic {
@@ -67,43 +68,19 @@ const resolvers = {
             let size = 0
             let stats
             let data = []
-            let collections = [
-                {name: 'Заявка на подключение', collection: '../models/applicationToConnect'},
-                {name: 'Блог', collection: '../models/blog'},
-                {name: 'Правовой объект', collection: '../models/branch'},
-                {name: 'Касса', collection: '../models/cashbox'},
-                {name: 'Категория', collection: '../models/category'},
-                {name: 'Категория налогоплательщика', collection: '../models/categoryLegalObject'},
-                {name: 'Клиенты', collection: '../models/client'},
-                {name: 'Кредиты', collection: '../models/consignation'},
-                {name: 'Внесения', collection: '../models/depositHistory'},
-                {name: 'Районы', collection: '../models/district'},
-                {name: 'Контакты', collection: '../models/contact'},
-                {name: 'Ошибка', collection: '../models/error'},
-                {name: 'FAQ', collection: '../models/faq'},
-                {name: 'Товары', collection: '../models/item'},
-                {name: 'Штрихкоды', collection: '../models/itemBarCode'},
-                {name: 'Налогоплательщики', collection: '../models/legalObject'},
-                {name: 'Уведомления', collection: '../models/notificationStatistic'},
-                {name: 'Платежи', collection: '../models/payment'},
-                {name: 'Авансы', collection: '../models/prepayment'},
-                {name: 'Отчеты', collection: '../models/report'},
-                {name: 'Отзывы', collection: '../models/review'},
-                {name: 'Операции', collection: '../models/sale'},
-                {name: 'Подписчики', collection: '../models/subscriber'},
-                {name: 'Тарифы', collection: '../models/tariff'},
-                {name: 'Пользователи', collection: '../models/user'},
-                {name: 'Изъятия', collection: '../models/withdrawHistory'},
-                {name: 'Смены', collection: '../models/workshift'},
-            ]
+            let url = path.join(app.dirname, 'models')
+            let collections = fs.readdirSync(url);
             for(let i=0; i<collections.length; i++){
-                stats = await statsCollection(collections[i].collection)
-                size = checkFloat(stats.storageSize/mbSize)
-                allSize += size
-                allCount += stats.count
-                data.push(
-                    {_id: `#${i}`, data: [collections[i].name, size, stats.count]}
-                )
+                if('index.js'!==collections[i]) {
+                    console.log(`../models/${collections[i]}`)
+                    stats = await statsCollection(`../models/${collections[i]}`)
+                    size = checkFloat(stats.storageSize / mbSize)
+                    allSize += size
+                    allCount += stats.count
+                    data.push(
+                        {_id: `#${i}`, data: [collections[i], size, stats.count]}
+                    )
+                }
             }
             data = data.sort(function(a, b) {
                 return b.data[1] - a.data[1]

@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const NotificationStatisticSchema = mongoose.Schema({
     tag: String,
     url: String,
-    icon: String,
     title: String,
     text: String,
     delivered: Number,

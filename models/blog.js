@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const BlogSchema = mongoose.Schema({
     name: String,
     text: String,
-    image: String,
 }, {
     timestamps: true
 });

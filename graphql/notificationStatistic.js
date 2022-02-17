@@ -1,6 +1,6 @@
 const NotificationStatistic = require('../models/notificationStatistic');
 const {sendWebPush} = require('../module/webPush');
-const { saveImage, urlMain } = require('../module/const');
+const { saveImage, urlMain, deleteFile } = require('../module/const');
 
 const type = `
   type NotificationStatistic {
@@ -10,7 +10,6 @@ const type = `
     text: String
     tag: String
     url: String
-    icon: String
     delivered: Int
     failed: Int
     click: Int
@@ -61,7 +60,7 @@ const resolvers = {
 const resolversMutation = {
     addNotificationStatistic: async(parent, {text, title, tag , url, icon}, {user}) => {
         if(['admin', 'superadmin'].includes(user.role)&&user.add) {
-            let payload = {title: title, message: text, user: 'all', tag: tag, url: url}
+            let payload = {title, message: text, user: 'all', tag, url}
             if(icon){
                 let { createReadStream, filename } = await icon;
                 let stream = createReadStream()
@@ -69,6 +68,8 @@ const resolversMutation = {
                 payload.icon = urlMain+filename
             }
             await sendWebPush(payload)
+            if(icon)
+                await deleteFile(payload.icon)
             return await NotificationStatistic.findOne().sort('-createdAt').lean()
         }
     }

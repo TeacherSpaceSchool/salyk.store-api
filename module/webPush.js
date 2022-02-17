@@ -17,7 +17,6 @@ let sendWebPush = async({title, message, tag, url, icon, user}) => {
         let _object = new NotificationStatistic({
             tag: payload.tag,
             url: payload.url,
-            icon: payload.icon,
             title: payload.title,
             text: payload.message,
             delivered: 0,

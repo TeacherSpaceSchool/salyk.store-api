@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 connectDB.connect();
 if(!isMainThread) {
-    cron.schedule('22 14 * * *', async() => {
+    cron.schedule('22 14 * * *', () => {
         fs.readdir(path.join(app.dirname, 'public', 'xlsx'), function(err, items) {
             for(let i=0; i<items.length; i++){
                 if(items[i]!=='.gitignore')

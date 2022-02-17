@@ -61,7 +61,7 @@ const resolversMutation = {
                             rnmNumber: cashboxes[i].rnmNumber
                         })
                         if (!sync.sync)
-                            return 'Error cashboxes'
+                            return 'Ошибка cashboxes'
                     }
                 }
                 await Cashbox.deleteMany({legalObject: _id})
@@ -82,7 +82,7 @@ const resolversMutation = {
                             uniqueId: branchs[i].uniqueId
                         })
                         if (!sync.sync)
-                            return 'Error branchs'
+                            return 'Ошибка branchs'
                     }
                 }
                 await Branch.deleteMany({legalObject: _id})
@@ -97,13 +97,13 @@ const resolversMutation = {
                     regType: '3'
                 })
                 if (!sync.sync)
-                    return 'Error legalObject'
+                    return 'Ошибка legalObject'
                 await LegalObject.deleteMany({_id})
                 await CategoryLegalObject.deleteMany({legalObject: _id})
-                return 'OK'
+                return 'Данные успешно удалены'
             }
         }
-        return 'ERROR'
+        return 'Ошибка'
     }
 };
 

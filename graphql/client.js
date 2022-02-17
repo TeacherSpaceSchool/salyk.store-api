@@ -1,7 +1,6 @@
 const Client = require('../models/client');
 const Consignation = require('../models/consignation');
 const Prepayment = require('../models/prepayment');
-const { saveImage, deleteFile, urlMain } = require('../module/const');
 const IntegrationObject = require('../models/integrationObject');
 
 const type = `
@@ -16,7 +15,6 @@ const type = `
     del: Boolean
     info: String
     inn: String
-    files: [String]
   }
 `;
 
@@ -27,8 +25,8 @@ const query = `
 `;
 
 const mutation = `
-    addClient(legalObject: ID!, name: String!, phone: [String]!, inn: String!, uploads: [Upload]!, address: String!, email: [String]!, info: String!): Client
-    setClient(_id: ID!, name: String, phone: [String], inn: String, files: [String], uploads: [Upload], address: String, email: [String], info: String): String
+    addClient(legalObject: ID!, name: String!, phone: [String]!, inn: String!, address: String!, email: [String]!, info: String!): Client
+    setClient(_id: ID!, name: String, phone: [String], inn: String, address: String, email: [String], info: String): String
     deleteClient(_id: ID!): String
 `;
 
@@ -80,16 +78,9 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addClient: async(parent, {legalObject, name, phone, address, email, info, inn, uploads}, {user}) => {
+    addClient: async(parent, {legalObject, name, phone, address, email, info, inn}, {user}) => {
         if(['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер'].includes(user.role)&&user.add) {
             if(user.legalObject) legalObject = user.legalObject
-            let files = []
-            for(let i = 0; i<uploads.length;i++) {
-                let { createReadStream, filename } = await uploads[i];
-                let stream = createReadStream()
-                filename = await saveImage(stream, filename)
-                files.push(urlMain+filename)
-            }
             let client = new Client({
                 name,
                 legalObject,
@@ -97,8 +88,7 @@ const resolversMutation = {
                 address,
                 info,
                 email,
-                inn,
-                files,
+                inn
 
             });
             client = await Client.create(client)
@@ -121,7 +111,7 @@ const resolversMutation = {
             return client
         }
     },
-    setClient: async(parent, {_id, name, phone, address, email, info, inn, files, uploads}, {user}) => {
+    setClient: async(parent, {_id, name, phone, address, email, info, inn}, {user}) => {
         if(['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер'].includes(user.role)&&user.add) {
             let object = await Client.findOne({
                 _id,
@@ -133,20 +123,6 @@ const resolversMutation = {
             if(email) object.email = email
             if(info) object.info = info
             if(inn) object.inn = inn
-            if(files)
-                for (let i = 0; i < object.files.length; i++)
-                    if (!files.includes(object.files[i])) {
-                        await deleteFile(object.files[i])
-                        object.files.splice(i, 1)
-                        i -= 1
-                    }
-            if(uploads&&uploads.length)
-                for(let i = 0; i<uploads.length;i++) {
-                    let { createReadStream, filename } = await uploads[i];
-                    let stream = createReadStream()
-                    filename = await saveImage(stream, filename)
-                    object.files = [urlMain+filename, ...object.files]
-                }
             await object.save();
             return 'OK'
         }
