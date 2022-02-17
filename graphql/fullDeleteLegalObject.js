@@ -98,7 +98,7 @@ const resolversMutation = {
                 })
                 if (!sync.sync)
                     return 'Error legalObject'
-                await LegalObject.deleteMany({legalObject: _id})
+                await LegalObject.deleteMany({_id})
                 await CategoryLegalObject.deleteMany({legalObject: _id})
                 return 'OK'
             }
