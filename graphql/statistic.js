@@ -540,14 +540,14 @@ const resolversMutation = {
                     item = new Item({
                         category: undefined,
                         legalObject,
+                        name: rows[i][0]?rows[i][0]:'Товар',
                         price: checkFloat(rows[i][1]),
                         unit: rows[i][2]?rows[i][2]:'шт',
                         barCode: rows[i][3]?rows[i][3]:'',
-                        name: rows[i][0]?rows[i][0]:'Товар',
-                        type: rows[i][5]&&types.includes(rows[i][5])?rows[i][5]:'товары',
+                        type: rows[i][4]&&types.includes(rows[i][4])?rows[i][4]:'товары',
+                        mark: rows[i][5] === 'да',
                         editedPrice: false,
                         tnved: '',
-                        mark: rows[i][4]==='да'?true:false,
                     });
                     item = await Item.create(item);
                     if(rows[i][3]&&rows[i][0]&&!(await ItemBarCode.findOne({barCode: rows[i][3]}).select('_id').lean())){
@@ -580,7 +580,7 @@ const resolversMutation = {
                     if(rows[i][3])
                         item.barCode = rows[i][3]
                     if(rows[i][4])
-                        item.mark = rows[i][4]==='да'?true:false
+                        item.mark = rows[i][4] === 'да'
                     if(rows[i][5]&&types.includes(rows[i][5]))
                         item.type = rows[i][5]
                     await item.save()

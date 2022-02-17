@@ -6,12 +6,15 @@ const fs = require('fs');
 const path = require('path');
 connectDB.connect();
 if(!isMainThread) {
-    cron.schedule('1 3 * * *', async() => {
+    cron.schedule('22 14 * * *', async() => {
         fs.readdir(path.join(app.dirname, 'public', 'xlsx'), function(err, items) {
             for(let i=0; i<items.length; i++){
-                fs.unlink(path.join(app.dirname, 'public', 'xlsx', items[i]), ()=>{
-                    console.log(`delete ${items[i]}`);
-                })
+                if(items[i]!=='.gitignore')
+                    fs.unlink(path.join(app.dirname, 'public', 'xlsx', items[i]), ()=>{
+                        console.log(`delete ${items[i]}`);
+                    })
+                else
+                    console.log('nope')
             }
         });
     });
