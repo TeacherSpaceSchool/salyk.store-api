@@ -203,14 +203,14 @@ const resolversMutation = {
                 payment,
                 email
             });
-            await User.create(_object)
+            _object = await User.create(_object)
             let history = new History({
                 who: user._id,
                 where: _object._id,
                 what: 'Создание'
             });
             await History.create(history)
-            return 'OK'
+            return _object._id
         }
         return 'ERROR'
     },
