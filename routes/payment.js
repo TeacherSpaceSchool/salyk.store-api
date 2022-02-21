@@ -16,10 +16,9 @@ router.post('/paybox/result', async(req, res) => {
         if(payment){
             if(req.body.pg_result=='1'){
                 if(payment.status==='Обработка') {
-                    let endPayment
-                    let now = new Date()
                     for (let i = 0; i < payment.cashboxes.length; i++) {
-                        endPayment = (await Cashbox.findOne({_id: payment.cashboxes[i]}).select('endPayment').lean()).endPayment
+                        let now = new Date()
+                         let endPayment = (await Cashbox.findOne({_id: payment.cashboxes[i]}).select('endPayment').lean()).endPayment
                         if (!endPayment||endPayment<now) endPayment = now
                         endPayment.setMonth(endPayment.getMonth() + payment.months)
                         endPayment.setDate(endPayment.getDate() + payment.days)

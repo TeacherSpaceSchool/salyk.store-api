@@ -143,7 +143,7 @@ const resolversMutation = {
         if (['admin', 'superadmin', 'оператор'].includes(user.role) && user.payment && (['admin', 'superadmin'].includes(user.role)||paid>=amount)) {
             legalObject = await LegalObject.findOne({_id: legalObject}).select('_id').lean()
             if (legalObject) {
-                let endPayment, change = paid - amount
+                let change = paid - amount
                 let number = randomstring.generate({length: 10, charset: 'numeric'});
                 while (await Payment.findOne({number: number}).select('_id').lean())
                     number = randomstring.generate({length: 10, charset: 'numeric'});
@@ -162,9 +162,9 @@ const resolversMutation = {
                     change: change>0?change:0,
                     cashboxes,
                 });
-                let now = new Date()
                 for (let i = 0; i < cashboxes.length; i++) {
-                    endPayment = (await Cashbox.findOne({_id: cashboxes[i]}).select('endPayment').lean()).endPayment
+                    let now = new Date()
+                    let endPayment = (await Cashbox.findOne({_id: cashboxes[i]}).select('endPayment').lean()).endPayment
                     if (!endPayment||endPayment<now) endPayment = now
                     endPayment.setMonth(endPayment.getMonth() + months)
                     endPayment.setDate(endPayment.getDate() + days)
@@ -209,11 +209,10 @@ const resolversMutation = {
     },
     refundPayment: async(parent, {_id}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.payment) {
-            let endPayment
             let object = await Payment.findById(_id)
             object.refund = true
             for(let i=0; i<object.cashboxes.length; i++){
-                endPayment = (await Cashbox.findOne({_id: object.cashboxes[i]}).select('endPayment').lean()).endPayment
+                let endPayment = (await Cashbox.findOne({_id: object.cashboxes[i]}).select('endPayment').lean()).endPayment
                 if(!endPayment) endPayment = new Date()
                 endPayment.setMonth(endPayment.getMonth()-object.months)
                 endPayment.setDate(endPayment.getDate()-object.days)
