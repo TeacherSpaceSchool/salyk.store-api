@@ -1,3 +1,4 @@
+const FullDeleteLegalObject = require('../models/fullDeleteLegalObject');
 const LegalObject = require('../models/legalObject');
 const IntegrationObject = require('../models/integrationObject');
 const Integration = require('../models/integration');
@@ -22,15 +23,46 @@ const District = require('../models/district');
 const {ugnsTypes, pTypes, bTypes, taxpayerTypes} = require('../module/const');
 const {registerKkm, registerSalesPoint, registerTaxPayer} = require('../module/kkm');
 
+const type = `
+  type FullDeleteLegalObject {
+    _id: ID
+    createdAt: Date
+    legalObject: String
+    status: String
+    end: Date
+  }
+`;
+
+const query = `
+    fullDeleteLegalObjects(skip: Int): [FullDeleteLegalObject]
+`;
+
 const mutation = `
     fullDeleteLegalObject(_id: ID!): String
 `;
+
+const resolvers = {
+    fullDeleteLegalObjects: async(parent, {skip}, {user}) => {
+        if('superadmin'===user.role) {
+            return await FullDeleteLegalObject.find()
+                .skip(skip != undefined ? skip : 0)
+                .limit(skip != undefined ? 15 : 10000000000)
+                .sort('-createdAt')
+                .lean()
+        }
+    }
+};
 
 const resolversMutation = {
     fullDeleteLegalObject: async(parent, { _id }, {user}) => {
         if('superadmin'===user.role) {
             let legalObject = await LegalObject.findOne({_id}).lean()
             if (legalObject) {
+                let fullDeleteLegalObject = new FullDeleteLegalObject({
+                    legalObject: legalObject.name,
+                    status: 'Обработка'
+                });
+                fullDeleteLegalObject = await FullDeleteLegalObject.create(fullDeleteLegalObject)
                 await Integration.deleteOne({legalObject: _id})
                 await IntegrationObject.deleteMany({legalObject: _id})
                 await District.deleteMany({legalObject: _id})
@@ -60,8 +92,12 @@ const resolversMutation = {
                             regType: '3',
                             rnmNumber: cashboxes[i].rnmNumber
                         })
-                        if (!sync.sync)
+                        if (!sync.sync) {
+                            fullDeleteLegalObject.status = 'Ошибка cashboxes'
+                            fullDeleteLegalObject.end = new Date()
+                            await fullDeleteLegalObject.save()
                             return 'Ошибка cashboxes'
+                        }
                     }
                 }
                 await Cashbox.deleteMany({legalObject: _id})
@@ -81,8 +117,12 @@ const resolversMutation = {
                             regType: '3',
                             uniqueId: branchs[i].uniqueId
                         })
-                        if (!sync.sync)
-                            return 'Ошибка branchs'
+                        if (!sync.sync) {
+                            fullDeleteLegalObject.status = 'Ошибка branchs'
+                            fullDeleteLegalObject.end = new Date()
+                            await fullDeleteLegalObject.save()
+                            return 'Ошибка '
+                        }
                     }
                 }
                 await Branch.deleteMany({legalObject: _id})
@@ -96,10 +136,17 @@ const resolversMutation = {
                     responsiblePerson: legalObject.responsiblePerson,
                     regType: '3'
                 })
-                if (!sync.sync)
+                if (!sync.sync) {
+                    fullDeleteLegalObject.status = 'Ошибка legalObject'
+                    fullDeleteLegalObject.end = new Date()
+                    await fullDeleteLegalObject.save()
                     return 'Ошибка legalObject'
+                }
                 await LegalObject.deleteMany({_id})
                 await CategoryLegalObject.deleteMany({legalObject: _id})
+                fullDeleteLegalObject.status = 'Данные успешно удалены'
+                fullDeleteLegalObject.end = new Date()
+                await fullDeleteLegalObject.save()
                 return 'Данные успешно удалены'
             }
         }
@@ -107,5 +154,8 @@ const resolversMutation = {
     }
 };
 
+module.exports.type = type;
+module.exports.query = query;
+module.exports.resolvers = resolvers;
 module.exports.resolversMutation = resolversMutation;
 module.exports.mutation = mutation;

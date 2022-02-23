@@ -65,6 +65,7 @@ const typeDefs = gql`
         message: String
     }
     ${Blog.type}
+    ${FullDeleteLegalObject.type}
     ${Branch.type}
     ${District.type}
     ${Cashbox.type}
@@ -129,6 +130,7 @@ const typeDefs = gql`
         ${Blog.query}
         ${Branch.query}
         ${District.query}
+        ${FullDeleteLegalObject.query}
         ${Cashbox.query}
         ${Report.query}
         ${Category.query}
@@ -200,6 +202,7 @@ const resolvers = {
         ...Review.resolvers,
         ...Sale.resolvers,
         ...Tariff.resolvers,
+        ...FullDeleteLegalObject.resolvers,
         ...User.resolvers,
         ...Workshift.resolvers,
         ...Error.resolvers,
