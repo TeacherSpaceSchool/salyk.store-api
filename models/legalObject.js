@@ -25,7 +25,11 @@ const LegalObjectSchema = mongoose.Schema({
     ofd: {
         type: Boolean,
         default: true
-    }
+    },
+    agent: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'UserSALYK'
+    },
 }, {
     timestamps: true
 });
@@ -34,6 +38,7 @@ LegalObjectSchema.index({name: 1})
 LegalObjectSchema.index({del: 1})
 LegalObjectSchema.index({ofd: 1})
 LegalObjectSchema.index({inn: 1})
+LegalObjectSchema.index({agent: 1})
 
 const LegalObject = mongoose.model('LegalObjectSALYK', LegalObjectSchema);
 

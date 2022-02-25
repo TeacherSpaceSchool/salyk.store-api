@@ -26,6 +26,7 @@ const type = `
     ofd: Boolean
     sync: Boolean
     syncMsg: String
+    agent: User
     rateTaxe: String
     ndsType: String
     nspType: String
@@ -49,8 +50,8 @@ const query = `
 `;
 
 const mutation = `
-    addLegalObject(name: String!, rateTaxe: String!, ndsType: String!, nspType: String!, ofd: Boolean!, inn: String!, address: String!, email: [String]!, phone: [String]!, taxpayerType: String!, ugns: String!, responsiblePerson: String!): String
-    setLegalObject(_id: ID!, name: String, rateTaxe: String, ofd: Boolean, address: String, ndsType: String, nspType: String, email: [String], phone: [String], taxpayerType: String, ugns: String, responsiblePerson: String): String
+    addLegalObject(name: String!, agent: ID, rateTaxe: String!, ndsType: String!, nspType: String!, ofd: Boolean!, inn: String!, address: String!, email: [String]!, phone: [String]!, taxpayerType: String!, ugns: String!, responsiblePerson: String!): String
+    setLegalObject(_id: ID!, name: String, agent: ID, rateTaxe: String, ofd: Boolean, address: String, ndsType: String, nspType: String, email: [String], phone: [String], taxpayerType: String, ugns: String, responsiblePerson: String): String
     onoffLegalObject(_id: ID!): String
     deleteLegalObject(_id: ID!): String
     restoreLegalObject(_id: ID!): String
@@ -105,6 +106,10 @@ const resolvers = {
                 ...user.legalObject?{del: {$ne: true}} : {},
                 _id: user.legalObject?user.legalObject:_id
             })
+                .populate({
+                    path: 'agent',
+                    select: 'name _id'
+                })
                 .lean()
             return user.role==='кассир'?{
                 _id: res._id,
@@ -116,7 +121,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addLegalObject: async(parent, {name, rateTaxe, ndsType, nspType, inn, address, phone, taxpayerType, ugns, email, responsiblePerson, ofd}, {user}) => {
+    addLegalObject: async(parent, {name, agent, rateTaxe, ndsType, nspType, inn, address, phone, taxpayerType, ugns, email, responsiblePerson, ofd}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add&&name!=='Налогоплательщик'&&!(await LegalObject.findOne({inn}).select('_id').lean())) {
             let _object = new LegalObject({
                 name,
@@ -124,6 +129,7 @@ const resolversMutation = {
                 ndsType,
                 nspType,
                 address,
+                agent,
                 phone,
                 status: 'active',
                 taxpayerType,
@@ -162,7 +168,7 @@ const resolversMutation = {
         }
         return 'ERROR'
     },
-    setLegalObject: async(parent, {_id, rateTaxe, name, ndsType, nspType, address, phone, email, taxpayerType, ugns, ofd, responsiblePerson}, {user}) => {
+    setLegalObject: async(parent, {_id, agent, rateTaxe, name, ndsType, nspType, address, phone, email, taxpayerType, ugns, ofd, responsiblePerson}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {
             let object = await LegalObject.findById(_id)
             let history = new History({
@@ -173,6 +179,10 @@ const resolversMutation = {
             if(name&&name!=='Налогоплательщик'){
                 history.what = `name:${object.name}→${name};`
                 object.name = name
+            }
+            if(agent!==object.agent){
+                history.what = `${history.what} agent:${object.agent}→${agent};`
+                object.agent = agent
             }
             if(address){
                 history.what = `${history.what} address:${object.address}→${address};`

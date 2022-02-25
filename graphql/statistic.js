@@ -45,6 +45,7 @@ const type = `
 `;
 
 const query = `
+    statisticActivityLegalObject(type: String, agent: ID): Statistic
     statisticStorageSize: Statistic
     statisticExpiredWorkShifts: Statistic
     statisticPayment(dateStart: Date): Statistic
@@ -60,6 +61,87 @@ const mutation = `
    `;
 
 const resolvers = {
+    statisticActivityLegalObject: async(parent, {agent, type}, {user}) => {
+        if(['admin', 'superadmin'].includes(user.role)&&user.statistic||user.role==='агент'){
+            console.log(agent)
+            if(user.role==='агент')
+                agent = user._id
+            console.log(agent)
+            let activeAll = 0, inactiveAll = 0, statistic = {}, data, cashboxes, now = new Date()
+            data = await LegalObject.find({
+                status: 'active',
+                del: {$ne: true},
+                ...agent?{agent}:type==='Агент'?{agent: {$ne: null}}:{},
+            })
+                .select('agent _id name')
+                .populate({
+                    path: 'agent',
+                    select: 'name _id'
+                })
+                .lean()
+            for(let i=0; i<data.length; i++) {
+                let id = type==='Агент'&&!agent?data[i].agent._id:data[i]._id
+                let name = type==='Агент'&&!agent?data[i].agent.name:data[i].name
+                if(!statistic[id])
+                    statistic[id] = {
+                        name,
+                        active: 0,
+                        inactive: 0,
+                        legalObject: 0
+                    }
+                cashboxes = await Cashbox.find({
+                    legalObject: data[i]._id,
+                    del: {$ne: true}
+                })
+                    .select('endPayment')
+                    .lean()
+                if(type==='Агент'&&!agent){
+                    statistic[id].legalObject += 1
+                }
+                for(let i1=0; i1<cashboxes.length; i1++) {
+                    if(cashboxes[i1].endPayment>now){
+                        statistic[id].active += 1
+                        activeAll += 1
+                    }
+                    else {
+                        statistic[id].inactive += 1
+                        inactiveAll += 1
+                    }
+                }
+            }
+            const keys = Object.keys(statistic)
+            data = []
+            for(let i=0; i<keys.length; i++){
+                data.push({
+                    _id: keys[i],
+                    data: [
+                        statistic[keys[i]].name,
+                        statistic[keys[i]].active,
+                        statistic[keys[i]].inactive,
+                        `${process.env.URL}/${type==='Агент'?'user':'legalobject'}/${keys[i]}`,
+                        ...type==='Агент'&&!agent?[statistic[keys[i]].legalObject]:[]
+                    ]
+                })
+            }
+            data = data.sort(function(a, b) {
+                return b.data[1] - a.data[1]
+            });
+            data = [
+                {
+                    _id: 'All',
+                    data: [
+                        activeAll,
+                        inactiveAll
+                    ]
+                },
+                ...data
+            ]
+            return {
+                columns: ['название', 'активные', 'неактивные', ...type==='Агент'&&!agent?['налогоплательщиков']:[]],
+                row: data
+            };
+        }
+    },
     statisticStorageSize: async(parent, ctx, {user}) => {
         if(['admin', 'superadmin'].includes(user.role)){
             let allSize = 0
@@ -375,7 +457,7 @@ const resolvers = {
                     data: [
                         `Налогоплательщик: ${legalObjects[i].name}`,
                         pdDDMMYYHHMM(legalObjects[i].createdAt),
-                        `${process.env.URL}/legalObject/${legalObjects[i]._id}`
+                        `${process.env.URL}/legalobject/${legalObjects[i]._id}`
                     ]
                 })
             }

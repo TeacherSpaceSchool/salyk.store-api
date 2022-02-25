@@ -231,8 +231,6 @@ const resolversMutation = {
                 :
                 user.role==='управляющий'? {role: {$ne: 'admin'}, del: {$ne: true}, _id}
                 :
-                user.role==='кассир'?{_id: user._id, del: {$ne: true}}
-                :
                 user.role==='супервайзер'?_id.toString()!==user._id.toString()?{$and: [{_id: {$in: districts}}, {_id}], del: {$ne: true}}:{_id, del: {$ne: true}}
                 :
                 user.role==='superadmin'?{_id}
@@ -246,7 +244,7 @@ const resolversMutation = {
                     where: object._id,
                     what: ''
                 });
-                if (login) {
+                if (['admin', 'оператор', 'superadmin'].includes(user.role)&&login) {
                     history.what = `login:${object.login}→${login};`
                     object.login = login
                     object.enteredDate = null
@@ -261,7 +259,7 @@ const resolversMutation = {
                         await res.cookie('jwt', token, {maxAge: user.role==='кассир'?24*60*60*1000:10*365*24*60*60*1000 });
                     }
                 }
-                if (password) {
+                if (['admin', 'оператор', 'superadmin'].includes(user.role)&&password) {
                     history.what = `${history.what} password;`
                     object.password = password
                 }
