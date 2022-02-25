@@ -10,6 +10,7 @@ const type = `
     phone: [String]
     info: String
     social: [String]
+    whatsapp: [Boolean]
  }
   type Address {
     address: String
@@ -26,7 +27,7 @@ const query = `
 `;
 
 const mutation = `
-    setContact(name: String!, addresses: [AddressInput]!, email: [String]!, info: String!, phone: [String]!, social: [String]!): String
+    setContact(name: String!, whatsapp: [Boolean]!, addresses: [AddressInput]!, email: [String]!, info: String!, phone: [String]!, social: [String]!): String
 `;
 
 const resolvers = {
@@ -35,6 +36,7 @@ const resolvers = {
         return !contact ? {
             name: '',
             addresses: [],
+            whatsapp: [],
             email: [],
             phone: [],
             info: '',
@@ -44,7 +46,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    setContact: async(parent, {name, addresses, email, phone, social, info}, {user}) => {
+    setContact: async(parent, {name, addresses, whatsapp, email, phone, social, info}, {user}) => {
         if(['admin', 'superadmin'].includes(user.role)&&user.add) {
             let object = await Contact.findOne()
             if(!object){
@@ -52,6 +54,7 @@ const resolversMutation = {
                     name,
                     info,
                     phone,
+                    whatsapp,
                     email,
                     addresses,
                     social
@@ -65,6 +68,7 @@ const resolversMutation = {
                 await History.create(history)
             }
             else {
+                object.whatsapp = whatsapp
                 object.name = name
                 object.info = info
                 object.phone = phone
