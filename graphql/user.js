@@ -225,17 +225,17 @@ const resolversMutation = {
                     .lean()
             }
             let object = await User.findOne({
-                ...user.role==='admin'? _id.toString()!==user._id.toString()?{role: {$ne: 'admin'}, _id}:{_id}
+                ...user.role==='admin'?{role: {$ne: 'admin'}, _id}
                 :
-                user.role==='оператор'? {..._id.toString()!==user._id.toString()?{$and: [{role: {$ne: 'admin'}}, {role: {$ne: 'оператор'}}]}:{role: {$ne: 'admin'}}, del: {$ne: true}, _id}
+                user.role==='оператор'? {$and: [{role: {$ne: 'admin'}}, {role: {$ne: 'оператор'}}], del: {$ne: true}, _id}
                 :
                 user.role==='управляющий'? {role: {$ne: 'admin'}, del: {$ne: true}, _id}
                 :
-                user.role==='супервайзер'?_id.toString()!==user._id.toString()?{$and: [{_id: {$in: districts}}, {_id}], del: {$ne: true}}:{_id, del: {$ne: true}}
+                user.role==='супервайзер'?{$and: [{_id: {$in: districts}}, {_id}], del: {$ne: true}}
                 :
                 user.role==='superadmin'?{_id}
                 :
-                {_id: user._id, del: {$ne: true}},
+                {_id: null},
                 ...user.legalObject ? {legalObject: user.legalObject} : {},
             })
             if (object) {

@@ -3,7 +3,7 @@ const WorkShift = require('../models/workshift');
 const Cashbox = require('../models/cashbox');
 const LegalObject = require('../models/legalObject');
 const IntegrationObject = require('../models/integrationObject');
-const {psDDMMYYYYHHMM, pdDDMMYYYYHHMM} = require('./const');
+const {psDDMMYYYYHHMM, pdDDMMYYYYHHMM, pdKKMqr} = require('./const');
 const { checkFloat } = require('../module/const');
 const { ndsTypes, nspTypes } = require('../module/const');
 const Consignation = require('../models/consignation');
@@ -495,7 +495,7 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
             if(/*(await LegalObject.findOne({ofd: true, _id: user.legalObject}).select('ofd').lean())&&*/workShift.syncMsg!=='Фискальный режим отключен'){
                 if(cashbox.rnmNumber) {
                     let qr = await QRCode.toDataURL(
-                        `https://kkm.salyk.kg/kkm/check?rnmNumber=${cashbox.rnmNumber}&checkNumber=${number}&amount=${amountEnd}&date=${pdKKM(newSale.createdAt)}`
+                        `https://kkm.salyk.kg/kkm/check?rnmNumber=${cashbox.rnmNumber}&checkNumber=${number}&amount=${amountEnd}&date=${pdKKMqr(newSale.createdAt)}`
                     )
                     await Sale.updateOne({_id: newSale._id}, {qr})
                     check(newSale._id)

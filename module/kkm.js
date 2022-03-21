@@ -4,6 +4,8 @@ const Report = require('../models/report');
 const WorkShift = require('../models/workshift');
 const axios = require('axios');
 const builder = require('xmlbuilder');
+const { typePayments, pdKKMqr, pdKKM, ndsTypesKKM, nspTypesKKM } = require('../module/const');
+const QRCode = require('qrcode')
 const {pdDDMMYYHHMM} = require('../module/const');
 const xml2js = require('xml-js').xml2js;
 const memberCode = process.env.memberCode?process.env.memberCode.trim():'';
@@ -41,8 +43,6 @@ const xmlKKM = (serviceCode, request) => {
     xmlKKM['soapenv:Envelope']['soapenv:Body'][`ps:${serviceCode==='check'?'check1':serviceCode}`] = request
     return xmlKKM
 };
-const { typePayments, pdKKM, ndsTypesKKM, nspTypesKKM } = require('../module/const');
-const QRCode = require('qrcode')
 
 module.exports.tpDataByINNforBusinessActivity = async (inn)=>{
     let resXml = ''
@@ -279,7 +279,7 @@ module.exports.check = async (_id)=>{
         })
     if(!sale.qr)
         sale.qr = await QRCode.toDataURL(
-            `https://kkm.salyk.kg/kkm/check?rnmNumber=${sale.cashbox.rnmNumber}&checkNumber=${sale.number}&amount=${sale.amountEnd}&date=${pdKKM(sale.createdAt)}`
+            `https://kkm.salyk.kg/kkm/check?rnmNumber=${sale.cashbox.rnmNumber}&checkNumber=${sale.number}&amount=${sale.amountEnd}&date=${pdKKMqr(sale.createdAt)}`
         )
     try{
         let details = []

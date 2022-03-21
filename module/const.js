@@ -142,6 +142,12 @@ module.exports.pdKKM = (date) =>
     date = `${date.getFullYear()}-${date.getMonth()<9?'0':''}${date.getMonth()+1}-${date.getDate()<10?'0':''}${date.getDate()}T${date.getHours()<10?'0':''}${date.getHours()}:${date.getMinutes()<10?'0':''}${date.getMinutes()}:${date.getSeconds()<10?'0':''}${date.getSeconds()}.000+06:00`
     return date
 }
+module.exports.pdKKMqr = (date) =>
+{
+    date = new Date(date)
+    date = `${date.getFullYear()}-${date.getMonth()<9?'0':''}${date.getMonth()+1}-${date.getDate()<10?'0':''}${date.getDate()}_${date.getHours()<10?'0':''}${date.getHours()}:${date.getMinutes()<10?'0':''}${date.getMinutes()}:${date.getSeconds()<10?'0':''}${date.getSeconds()}`
+    return date
+}
 module.exports.psDDMMYYYYHHMM = (string) =>
 {
     let date = new Date()
