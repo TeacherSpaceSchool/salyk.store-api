@@ -4,7 +4,7 @@ const Consignation = require('../models/consignation');
 const Prepayment = require('../models/prepayment');
 const Cashbox = require('../models/cashbox');
 const District = require('../models/district');
-const { pdKKMqr, checkFloat, cashierMaxDay } = require('../module/const');
+const { pdQRKKM, checkFloat, cashierMaxDay } = require('../module/const');
 const { check } = require('../module/kkm');
 const QRCode = require('qrcode')
 
@@ -507,7 +507,7 @@ const resolversMutation = {
 
                     if(cashbox.rnmNumber) {
                         let qr = await QRCode.toDataURL(
-                            `https://kkm.salyk.kg/kkm/check?rnmNumber=${cashbox.rnmNumber}&checkNumber=${number}&amount=${amountEnd}&date=${pdKKMqr(newSale.createdAt)}`
+                            `https://kkm.salyk.kg/kkm/check?rnmNumber=${cashbox.rnmNumber}&checkNumber=${number}&amount=${amountEnd}&date=${pdQRKKM(newSale.createdAt)}`
                         )
                         await Sale.updateOne({_id: newSale._id}, {qr})
                         check(newSale._id)

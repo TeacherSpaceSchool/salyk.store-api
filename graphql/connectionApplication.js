@@ -19,7 +19,7 @@ const query = `
 `;
 
 const mutation = `
-    addApplicationToConnect(name: String!, phone: String!, address: String!, whereKnow: String!): String
+    addApplicationToConnect(name: String!, phone: String!, address: String!, whereKnow: String!): ApplicationToConnect
     acceptApplicationToConnect(_id: ID!): String
     deleteApplicationToConnect(_id: ID!): String
 `;
@@ -39,6 +39,7 @@ const resolvers = {
                 })
                 .lean()
         }
+        else return []
     },
     applicationToConnectsCount: async(parent, {filter}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)) {
@@ -60,10 +61,10 @@ const resolversMutation = {
                 whereKnow,
                 taken: false
             });
-            await ApplicationToConnect.create(_object)
-            return 'OK'
+            _object = await ApplicationToConnect.create(_object)
+            return _object
         }
-        return 'ERROR'
+        return null
     },
     acceptApplicationToConnect: async(parent, {_id}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {

@@ -4,7 +4,7 @@ const Report = require('../models/report');
 const WorkShift = require('../models/workshift');
 const axios = require('axios');
 const builder = require('xmlbuilder');
-const { typePayments, pdKKMqr, pdKKM, ndsTypesKKM, nspTypesKKM } = require('../module/const');
+const { typePayments, pdQRKKM, pdKKM, ndsTypesKKM, nspTypesKKM } = require('../module/const');
 const QRCode = require('qrcode')
 const {pdDDMMYYHHMM} = require('../module/const');
 const xml2js = require('xml-js').xml2js;
@@ -279,7 +279,7 @@ module.exports.check = async (_id)=>{
         })
     if(!sale.qr)
         sale.qr = await QRCode.toDataURL(
-            `https://kkm.salyk.kg/kkm/check?rnmNumber=${sale.cashbox.rnmNumber}&checkNumber=${sale.number}&amount=${sale.amountEnd}&date=${pdKKMqr(sale.createdAt)}`
+            `https://kkm.salyk.kg/kkm/check?rnmNumber=${sale.cashbox.rnmNumber}&checkNumber=${sale.number}&amount=${sale.amountEnd}&date=${pdQRKKM(sale.createdAt)}`
         )
     try{
         let details = []
