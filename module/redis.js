@@ -41,6 +41,7 @@ module.exports.SingletonRedis = class SingletonRedis {
                 return {allow: true}
             }
             else {
+                bruteForce.date = new Date(bruteForce.date)
                 bruteForce.date.setMinutes(bruteForce.date.getMinutes()+1)
                 return {allow: false, error: `Повторите попытку в ${pdHHMM(bruteForce.date)}`}
             }

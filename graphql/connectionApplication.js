@@ -9,6 +9,7 @@ const type = `
     address: String
     whereKnow: String
     taken: Boolean
+    comment: String
      who: User
  }
 `;
@@ -20,6 +21,7 @@ const query = `
 
 const mutation = `
     addApplicationToConnect(name: String!, phone: String!, address: String!, whereKnow: String!): ApplicationToConnect
+    setApplicationToConnect(_id: ID!, comment: String!): String
     acceptApplicationToConnect(_id: ID!): String
     deleteApplicationToConnect(_id: ID!): String
 `;
@@ -66,9 +68,24 @@ const resolversMutation = {
         }
         return null
     },
+    setApplicationToConnect: async(parent, {_id, comment}, {user}) => {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {
+            let object = await ApplicationToConnect.findOne({
+                _id,
+                taken: {$ne: true}
+            })
+            object.comment = comment
+            await object.save();
+            return 'OK'
+        }
+        return 'ERROR'
+    },
     acceptApplicationToConnect: async(parent, {_id}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {
-            let object = await ApplicationToConnect.findById(_id)
+            let object = await ApplicationToConnect.findOne({
+                _id,
+                taken: {$ne: true}
+            })
             object.taken = true
             object.who = user._id
             await object.save();

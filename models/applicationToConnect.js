@@ -5,6 +5,7 @@ const ApplicationToConnectSchema = mongoose.Schema({
     name: String,
     phone: String,
     address: String,
+    comment: String,
     who: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'UserSALYK'
