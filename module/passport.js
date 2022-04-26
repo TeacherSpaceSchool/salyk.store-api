@@ -233,7 +233,7 @@ const signinuserGQL = (req, res) => {
                 }
             } catch (err) {
                 console.error(err)
-                resolve({message: 'Неверный логин или пароль'})
+                resolve({error: 'Неверный логин или пароль'})
             }
         })(req, res);
     })
