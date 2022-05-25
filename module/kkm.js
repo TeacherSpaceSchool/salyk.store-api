@@ -284,6 +284,15 @@ module.exports.check = async (_id)=>{
     try{
         let details = [], taxes = []
         for(let i=0; i<sale.items.length; i++) {
+            if(sale.items[i].ndsType!=undefined||sale.items[i].nspType!=undefined)
+                taxes.push({
+                    tax: {
+                        ...sale.items[i].ndsType!=undefined?{ndsType: ndsTypesKKM[sale.items[i].ndsType]}:{},
+                        ...sale.items[i].nds!=undefined?{nds: sale.items[i].nds}:{},
+                        ...sale.items[i].nspType!=undefined?{nspType: nspTypesKKM[sale.items[i].nspType]}:{},
+                        ...sale.items[i].nsp!=undefined?{nsp: sale.items[i].nsp}:{}
+                    }
+                })
             details.push({
                 detail: {
                     productName: sale.items[i].name,
