@@ -282,7 +282,7 @@ module.exports.check = async (_id)=>{
             `https://kkm.salyk.kg/kkm/check?rnmNumber=${sale.cashbox.rnmNumber}&checkNumber=${sale.number}&amount=${sale.amountEnd}&date=${pdQRKKM(sale.createdAt)}`
         )
     try{
-        let details = []
+        let details = [], taxes = []
         for(let i=0; i<sale.items.length; i++) {
             details.push({
                 detail: {
@@ -310,7 +310,7 @@ module.exports.check = async (_id)=>{
             totalSum: sale.amountEnd,
             ...sale.sale?{returnCheckNumber: sale.sale.number}:{},
             details,
-            taxes: {}
+            taxes: taxes.length?taxes:{}
         }})
         xml = (builder.create(xml)).end({ pretty: true})
         //console.log(xml)

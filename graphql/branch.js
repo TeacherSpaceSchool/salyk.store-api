@@ -164,7 +164,6 @@ const resolversMutation = {
                 what: 'Создание'
             });
             await History.create(history)
-            console.log(_object._id)
             return _object._id
         }
         return 'ERROR'

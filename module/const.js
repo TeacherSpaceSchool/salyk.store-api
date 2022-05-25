@@ -6,7 +6,7 @@ const path = require('path');
 const urlMain = `${process.env.URL.trim()}:3000`
 module.exports.urlMain = urlMain
 module.exports.skip = 1
-module.exports.cashierMaxDay = 32
+module.exports.cashierMaxDay = 100
 
 module.exports.validMail = (mail) => {
     return /^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()\.,;\s@\"]+\.{0,1})+([^<>()\.,;:\s@\"]{2,}|[\d\.]+))$/.test(mail);

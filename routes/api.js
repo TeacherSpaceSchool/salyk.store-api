@@ -19,7 +19,6 @@ const {getIntegrationReports, getIntegrationReport, putIntegrationReport} = requ
 let verifiedLegalObject = async (req, res, action, params) => {
     res.set('Content+Type', 'application/json');
     try{
-        console.log(req.body)
         if(req.body.password){
             let legalObject = await Integration.findOne({
                 password: req.body.password

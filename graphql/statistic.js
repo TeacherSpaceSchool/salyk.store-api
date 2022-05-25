@@ -63,10 +63,8 @@ const mutation = `
 const resolvers = {
     statisticActivityLegalObject: async(parent, {agent, type}, {user}) => {
         if(['admin', 'superadmin'].includes(user.role)&&user.statistic||user.role==='агент'){
-            console.log(agent)
             if(user.role==='агент')
                 agent = user._id
-            console.log(agent)
             let activeAll = 0, inactiveAll = 0, statistic = {}, data, cashboxes, now = new Date()
             data = await LegalObject.find({
                 status: 'active',
@@ -154,7 +152,6 @@ const resolvers = {
             let collections = fs.readdirSync(url);
             for(let i=0; i<collections.length; i++){
                 if('index.js'!==collections[i]) {
-                    console.log(`../models/${collections[i]}`)
                     stats = await statsCollection(`../models/${collections[i]}`)
                     size = checkFloat(stats.storageSize / mbSize)
                     allSize += size
