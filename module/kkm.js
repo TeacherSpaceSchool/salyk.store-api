@@ -82,7 +82,7 @@ module.exports.tpDataByINNforBusinessActivity = async (inn)=>{
                 }
             }
         }
-        xml = (builder.create(xml)).end({ pretty: true})
+        xml = (builder.create(xml, {separateArrayItems: true})).end({ pretty: true})
         //console.log(xml)
         let config = {
             headers: {'Content-Type': 'text/xml;charset=UTF-8', 'Accept': 'text/xml;charset=UTF-8'}
@@ -121,7 +121,7 @@ module.exports.registerTaxPayer = async ({
     let syncMsg
     try{
         let xml = xmlKKM('registerTaxPayer', {'request': {tpType, inn, name, ugns, legalAddress, responsiblePerson, regType}})
-        xml = (builder.create(xml)).end({ pretty: true})
+        xml = (builder.create(xml, {separateArrayItems: true})).end({ pretty: true})
         //console.log(xml)
         let config = {
             headers: {'Content-Type': 'text/xml;charset=UTF-8', 'Accept': 'text/xml;charset=UTF-8'}
@@ -171,7 +171,7 @@ module.exports.registerSalesPoint = async ({
             regType,
             ...uniqueId?{uniqueId}:{}
         }})
-        xml = (builder.create(xml)).end({ pretty: true})
+        xml = (builder.create(xml, {separateArrayItems: true})).end({ pretty: true})
         //console.log(xml)
         let config = {
             headers: {'Content-Type': 'text/xml;charset=UTF-8', 'Accept': 'text/xml;charset=UTF-8'}
@@ -213,7 +213,7 @@ module.exports.registerKkm = async ({
                 ...rnmNumber?{rnmNumber}:{}
             }
         })
-        xml = (builder.create(xml)).end({pretty: true})
+        xml = (builder.create(xml, {separateArrayItems: true})).end({pretty: true})
         //console.log(xml)
         let config = {
             headers: {'Content-Type': 'text/xml;charset=UTF-8', 'Accept': 'text/xml;charset=UTF-8'}
@@ -246,7 +246,7 @@ module.exports.openShift = async ({
     try{
         workShift = await WorkShift.findOne({_id: workShift})
         let xml = xmlKKM('openShift', {'request': {rnmNumber, number, date}})
-        xml = (builder.create(xml)).end({ pretty: true})
+        xml = (builder.create(xml, {separateArrayItems: true})).end({ pretty: true})
         //console.log(xml)
         let config = {
             headers: {'Content-Type': 'text/xml;charset=UTF-8', 'Accept': 'text/xml;charset=UTF-8'}
@@ -321,8 +321,7 @@ module.exports.check = async (_id)=>{
             details,
             taxes: taxes.length?taxes:{}
         }})
-        xml = (builder.create(xml)).end({ pretty: true})
-        //console.log(xml)
+        xml = (builder.create(xml, {separateArrayItems: true})).end({ pretty: true})
         let config = {
             headers: {'Content-Type': 'text/xml;charset=UTF-8', 'Accept': 'text/xml;charset=UTF-8'}
         };
@@ -368,7 +367,7 @@ module.exports.zReport = async (_id)=>{
         if(!zdetails.length)
             zdetails = {}
         let xml = xmlKKM('zReport', {'request': {rnmNumber: report.cashbox.rnmNumber, zNumber: report.number, date: pdKKM(report.end), totalCache: report.cash, totalCacheless: report.cashless, zdetails}})
-        xml = (builder.create(xml)).end({ pretty: true})
+        xml = (builder.create(xml, {separateArrayItems: true})).end({ pretty: true})
         //console.log(xml)
         let config = {
             headers: {'Content-Type': 'text/xml;charset=UTF-8', 'Accept': 'text/xml;charset=UTF-8'}
