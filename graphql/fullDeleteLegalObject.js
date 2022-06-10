@@ -57,6 +57,8 @@ const resolversMutation = {
     fullDeleteLegalObject: async(parent, { _id }, {user}) => {
         if('superadmin'===user.role) {
             let legalObject = await LegalObject.findOne({_id}).lean()
+            if(await WorkShift.findOne({legalObject: _id, end: null}).select('_id').lean())
+                return 'Закройте смены'
             if (legalObject) {
                 let fullDeleteLegalObject = new FullDeleteLegalObject({
                     legalObject: legalObject.name,
@@ -72,7 +74,9 @@ const resolversMutation = {
                 await Consignation.deleteMany({legalObject: _id})
                 await Prepayment.deleteMany({legalObject: _id})
                 await Payment.deleteMany({legalObject: _id})
+
                 await WorkShift.deleteMany({legalObject: _id})
+
                 await Sale.deleteMany({legalObject: _id})
                 await WithdrawHistory.deleteMany({legalObject: _id})
                 await DepositHistory.deleteMany({legalObject: _id})
@@ -84,7 +88,7 @@ const resolversMutation = {
                 let cashboxes = await Cashbox.find({legalObject: _id}).lean(), uniqueId
                 for (let i = 0; i < cashboxes.length; i++) {
                     uniqueId = (await Branch.findById(cashboxes[i].branch).select('uniqueId').lean()).uniqueId
-                    if (uniqueId) {
+                    if (uniqueId&&cashboxes[i].rnmNumber) {
                         sync = await registerKkm({
                             spId: uniqueId,
                             name: cashboxes[i].name,

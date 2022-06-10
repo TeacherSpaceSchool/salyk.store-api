@@ -169,7 +169,7 @@ const resolversMutation = {
         return 'ERROR'
     },
     setLegalObject: async(parent, {_id, agent, rateTaxe, name, ndsType, nspType, address, phone, email, taxpayerType, ugns, ofd, responsiblePerson}, {user}) => {
-        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())) {
             let object = await LegalObject.findById(_id)
             let history = new History({
                 who: user._id,
@@ -220,7 +220,7 @@ const resolversMutation = {
                 history.what = `${history.what} email:${object.email}→${email};`
                 object.email = email
             }
-            if(['superadmin', 'admin'].includes(user.role)&&user.add&&ofd!==undefined&&!(await WorkShift.findOne({legalObject: _id, end: null}).select('_id').lean())){
+            if(['superadmin', 'admin'].includes(user.role)&&user.add&&ofd!==undefined){
                 history.what = `${history.what} ofd:${object.ofd}→${ofd};`
                 object.ofd = ofd
             }
@@ -246,7 +246,7 @@ const resolversMutation = {
         return 'ERROR'
     },
     onoffLegalObject: async(parent, { _id }, {user}) => {
-        if(['admin', 'superadmin'].includes(user.role)&&user.add) {
+        if(['admin', 'superadmin'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())) {
             let object = await LegalObject.findOne({_id})
             object.status = object.status==='active'?'deactive':'active'
             if(object.status==='deactive')
@@ -263,7 +263,7 @@ const resolversMutation = {
         return 'ERROR'
     },
     deleteLegalObject: async(parent, { _id }, {user}) => {
-        if(['admin', 'superadmin'].includes(user.role)&&user.add) {
+        if(['admin', 'superadmin'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())) {
             let object = await LegalObject.findOne({_id})
             object.del = true
 

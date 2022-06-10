@@ -5,6 +5,7 @@ const IntegrationObject = require('../models/integrationObject');
 const History = require('../models/history');
 const {registerSalesPoint} = require('../module/kkm');
 const {ugnsTypes, pTypes, bTypes} = require('../module/const');
+const WorkShift = require('../models/workshift');
 
 const type = `
   type Branch {
@@ -169,7 +170,7 @@ const resolversMutation = {
         return 'ERROR'
     },
     setBranch: async(parent, {_id, bType, pType, ugns, name, address, geo}, {user}) => {
-        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())) {
             let object = await Branch.findById(_id)
             let history = new History({
                 who: user._id,
@@ -234,7 +235,7 @@ const resolversMutation = {
         return 'ERROR'
     },
     deleteBranch: async(parent, { _id }, {user}) => {
-        if(['admin', 'superadmin'].includes(user.role)&&user.add) {
+        if(['admin', 'superadmin'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())) {
             let object = await Branch.findOne({_id})
             object.del = true
 
