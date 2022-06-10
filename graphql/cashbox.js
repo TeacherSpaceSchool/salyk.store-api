@@ -50,7 +50,7 @@ const resolvers = {
                     .lean()
             return await Cashbox.find({
                 del: {$ne: true},
-                ...filter==='active'?{presentCashier: {$ne: null}}:{},
+                ...filter==='active'?{presentCashier: {$ne: null}}:filter==='deactive'?{presentCashier: null}:{},
                 ...search&&search.length?{$or: [{rnmNumber: {'$regex': search, '$options': 'i'}}, {name: {'$regex': search, '$options': 'i'}}]}:{},
                 ...legalObject ? {legalObject} : {},
                 ...['супервайзер', 'кассир'].includes(user.role)||branch?{
@@ -92,7 +92,7 @@ const resolvers = {
                     .lean()
             }
             return await Cashbox.countDocuments({
-                ...filter==='active'?{presentCashier: {$ne: null}}:{},
+                ...filter==='active'?{presentCashier: {$ne: null}}:filter==='deactive'?{presentCashier: null}:{},
                 del: {$ne: true},
                 ...search&&search.length?{$or: [{rnmNumber: {'$regex': search, '$options': 'i'}}, {name: {'$regex': search, '$options': 'i'}}]}:{},
                 ...legalObject ? {legalObject: legalObject} : {},
