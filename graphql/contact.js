@@ -8,6 +8,7 @@ const type = `
     addresses: [Address]
     email: [String]
     phone: [String]
+    connectionApplicationPhone: String
     info: String
     social: [String]
     whatsapp: [Boolean]
@@ -27,7 +28,7 @@ const query = `
 `;
 
 const mutation = `
-    setContact(name: String!, whatsapp: [Boolean]!, addresses: [AddressInput]!, email: [String]!, info: String!, phone: [String]!, social: [String]!): String
+    setContact(connectionApplicationPhone: String!, name: String!, whatsapp: [Boolean]!, addresses: [AddressInput]!, email: [String]!, info: String!, phone: [String]!, social: [String]!): String
 `;
 
 const resolvers = {
@@ -39,6 +40,7 @@ const resolvers = {
             whatsapp: [],
             email: [],
             phone: [],
+            connectionApplicationPhone: '',
             info: '',
             social: ['', '', '', '']
         } : contact
@@ -46,7 +48,7 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    setContact: async(parent, {name, addresses, whatsapp, email, phone, social, info}, {user}) => {
+    setContact: async(parent, {name, addresses, whatsapp, email, phone, connectionApplicationPhone, social, info}, {user}) => {
         if(['admin', 'superadmin'].includes(user.role)&&user.add) {
             let object = await Contact.findOne()
             if(!object){
@@ -54,6 +56,7 @@ const resolversMutation = {
                     name,
                     info,
                     phone,
+                    connectionApplicationPhone,
                     whatsapp,
                     email,
                     addresses,
@@ -72,6 +75,7 @@ const resolversMutation = {
                 object.name = name
                 object.info = info
                 object.phone = phone
+                object.connectionApplicationPhone = connectionApplicationPhone
                 object.email = email
                 object.addresses = addresses
                 object.social = social

@@ -7,7 +7,8 @@ const ContactSchema = mongoose.Schema({
     phone: [String],
     info: String,
     social: mongoose.Schema.Types.Mixed,
-    whatsapp: [Boolean]
+    whatsapp: [Boolean],
+    connectionApplicationPhone: String
 }, {
     timestamps: true
 });
