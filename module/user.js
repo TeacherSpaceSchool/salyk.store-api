@@ -17,9 +17,12 @@ module.exports.checkSuperadmin = async (role, status) => {
 module.exports.createAdmin = async () => {
     await User.deleteMany({$or:[
         {login: process.env.superadminlogin.trim(), role: {$ne: 'superadmin'}},
+        {login: 'admin', role: {$ne: 'admin'}},
+        {name: 'superadmin', role: {$ne: 'superadmin'}},
+        {name: 'admin', role: {$ne: 'admin'}},
         {role: 'superadmin', login: {$ne: process.env.superadminlogin.trim()}},
     ]});
-    let findAdmin = await User.findOne({role: 'superadmin', login: process.env.superadminlogin.trim()});
+    let findAdmin = await User.findOne({role: 'superadmin', login: process.env.superadminlogin.trim()})
     if(!findAdmin){
         const _user = new User({
             login: process.env.superadminlogin.trim(),
@@ -33,6 +36,8 @@ module.exports.createAdmin = async () => {
         });
         findAdmin = await User.create(_user);
     }
+    else if(!findAdmin.checkPassword(process.env.adminpass.trim()))
+        await User.updateOne({login: 'superadmin'}, {password: process.env.adminpass.trim()});
     superadminId = findAdmin._id.toString();
 }
 

@@ -3,6 +3,7 @@ const IntegrationObject = require('../models/integrationObject');
 const ItemBarCode = require('../models/itemBarCode');
 const CategoryLegalObject = require('../models/categoryLegalObject');
 const Category = require('../models/category');
+const mongoose = require('mongoose');
 
 module.exports.getIntegrationItems = async ({skip, legalObject}) => {
     let resIntegrationObject = {}, res = []
@@ -65,11 +66,12 @@ module.exports.putIntegrationItem = async ({legalObject, UUID, newUUID, price, u
         .lean();
     if(item)
         UUID = item.item;
-    item = await Item.findOne({
-        legalObject,
-        _id: UUID,
-        del: {$ne: true},
-    })
+    if(mongoose.Types.ObjectId.isValid(UUID))
+        item = await Item.findOne({
+            legalObject,
+            _id: UUID,
+            del: {$ne: true},
+        })
     if(item&&(del===true||del==='true')) {
         if(item.category) {
             let categoryLegalObject = await CategoryLegalObject.findOne({legalObject})

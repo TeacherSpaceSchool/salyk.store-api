@@ -67,11 +67,12 @@ module.exports.putIntegrationClient = async ({UUID, newUUID, name, phone, addres
     if(client) {
         UUID = client.client;
     }
-    client = await Client.findOne({
-        legalObject,
-        _id: UUID,
-        del: {$ne: true},
-    })
+    if(mongoose.Types.ObjectId.isValid(UUID))
+        client = await Client.findOne({
+            legalObject,
+            _id: UUID,
+            del: {$ne: true},
+        })
     if(client&&(del===true||del==='true')) {
         client.del = true
         await client.save()
