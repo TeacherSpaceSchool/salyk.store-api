@@ -36,8 +36,8 @@ module.exports.createAdmin = async () => {
         });
         findAdmin = await User.create(_user);
     }
-    else if(!findAdmin.checkPassword(process.env.adminpass.trim()))
-        await User.updateOne({login: 'superadmin'}, {password: process.env.adminpass.trim()});
+    else if(!findAdmin.checkPassword(process.env.superadminpass.trim()))
+        await User.updateOne({login: 'superadmin'}, {password: process.env.superadminpass.trim()});
     superadminId = findAdmin._id.toString();
 }
 
