@@ -1,20 +1,26 @@
 const Branch = require('../models/branch');
-const LegalObject = require('../models/legalObject');
 const District = require('../models/district');
 const IntegrationObject = require('../models/integrationObject');
 const History = require('../models/history');
-const {registerSalesPoint} = require('../module/kkm');
-const {ugnsTypes, pTypes, bTypes} = require('../module/const');
+const Cashbox = require('../models/cashbox');
 const WorkShift = require('../models/workshift');
+const {reregisterCashbox} = require('../module/kkm-2.0');
 
 const type = `
   type Branch {
     _id: ID
     createdAt: Date
     legalObject: LegalObject
+    
+    bType_v2: Int
+    pType_v2: Int
+    ugns_v2: Int
+    calcItemAttribute: Int
+    
     bType: String
     pType: String
     ugns: String
+    
     name: String
     address: String
     geo: [Float]
@@ -22,6 +28,10 @@ const type = `
     sync: Boolean
     syncMsg: String
     uniqueId: String
+    locality: String
+    postalCode: String
+    route: String
+    streetNumber: String
   }
 `;
 
@@ -33,8 +43,8 @@ const query = `
 `;
 
 const mutation = `
-    addBranch(legalObject: ID!, bType: String!, pType: String!, ugns: String!, name: String!, address: String!, geo: [Float]): String
-    setBranch(_id: ID!, bType: String, pType: String, ugns: String, name: String, address: String, geo: [Float]): String
+    addBranch(legalObject: ID!, calcItemAttribute: Int!, locality: String!, postalCode: String!, route: String!, streetNumber: String!, address: String!, bType_v2: Int!, pType_v2: Int!, ugns_v2: Int!, name: String!, geo: [Float]): String
+    setBranch(_id: ID!, bType_v2: Int, pType_v2: Int, calcItemAttribute: Int, ugns_v2: Int, name: String, address: String, locality: String, postalCode: String, route: String, streetNumber: String, geo: [Float]): String
     deleteBranch(_id: ID!): String
     restoreBranch(_id: ID!): String
 `;
@@ -58,7 +68,7 @@ const resolvers = {
                 del: {$ne: true},
             })
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .sort('name')
                 .populate({
                     path: 'legalObject',
@@ -96,7 +106,7 @@ const resolvers = {
                 del: true
             })
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .sort('name')
                 .populate({
                     path: 'legalObject',
@@ -115,7 +125,7 @@ const resolvers = {
                     .distinct('branchs')
                     .lean()
             }
-            return await Branch.findOne({
+            let res = await Branch.findOne({
                 ...user.role==='супервайзер'?{$and: [{_id: {$in: districts}}, {_id}]}:{_id},
                 ...user.legalObject?{legalObject: user.legalObject, del: {$ne: true}}:{}
             })
@@ -124,40 +134,29 @@ const resolvers = {
                     select: 'name _id'
                 })
                 .lean()
+            return res
         }
     },
 };
 
 const resolversMutation = {
-    addBranch: async(parent, {legalObject, bType, pType, ugns, name, address, geo}, {user}) => {
+    addBranch: async(parent, {legalObject, address, calcItemAttribute, bType_v2, pType_v2, ugns_v2, name, locality, postalCode, route, streetNumber, geo}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {
             let _object = new Branch({
-                legalObject, bType, pType, ugns, name, address, geo
+                sync: true,
+                legalObject,
+                bType_v2,
+                pType_v2,
+                address,
+                calcItemAttribute,
+                ugns_v2,
+                name,
+                locality,
+                postalCode,
+                route,
+                streetNumber,
+                geo
             });
-
-            let inn = await LegalObject.findOne({_id: legalObject, sync: true}).select('inn').lean()
-            if(inn) {
-                inn = inn.inn
-                let sync = await registerSalesPoint({
-                    tpInn: inn,
-                    name,
-                    pType: pType === 'Прочее' ? '9999' : pTypes.indexOf(pType),
-                    bType: bType === 'Прочее' ? '9999' : bTypes.indexOf(bType),
-                    ugns: ugnsTypes[_object.ugns],
-                    factAddress: address,
-                    xCoordinate: _object.geo ? _object.geo[0] : null,
-                    yCoordinate: _object.geo ? _object.geo[1] : null,
-                    regType: '1'
-                })
-                _object.sync = sync.sync
-                _object.syncMsg = sync.syncMsg
-                if (sync.uniqueId) _object.uniqueId = sync.uniqueId
-            }
-            else {
-                _object.sync = false
-                _object.syncMsg = 'Нет ИНН'
-            }
-
             _object = await Branch.create(_object)
             let history = new History({
                 who: user._id,
@@ -169,7 +168,7 @@ const resolversMutation = {
         }
         return 'ERROR'
     },
-    setBranch: async(parent, {_id, bType, pType, ugns, name, address, geo}, {user}) => {
+    setBranch: async(parent, {_id, bType_v2, address, pType_v2, calcItemAttribute, ugns_v2, name, locality, postalCode, route, streetNumber, geo}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())) {
             let object = await Branch.findById(_id)
             let history = new History({
@@ -185,51 +184,50 @@ const resolversMutation = {
                 history.what = `${history.what} address:${object.address}→${address};`
                 object.address = address
             }
-            if(bType){
-                history.what = `${history.what} bType:${object.bType}→${bType};`
-                object.bType = bType
+            if(locality){
+                history.what = `${history.what} locality:${object.locality}→${locality};`
+                object.locality = locality
             }
-            if(ugns){
-                history.what = `${history.what} ugns:${object.ugns}→${ugns};`
-                object.ugns = ugns
+            if(calcItemAttribute!=undefined){
+                history.what = `${history.what} calcItemAttribute:${object.calcItemAttribute}→${calcItemAttribute};`
+                object.calcItemAttribute = calcItemAttribute
             }
-            if(pType){
-                history.what = `${history.what} pType:${object.pType}→${pType};`
-                object.pType = pType
+            if(postalCode){
+                history.what = `${history.what} postalCode:${object.postalCode}→${postalCode};`
+                object.postalCode = postalCode
+            }
+            if(route){
+                history.what = `${history.what} route:${object.route}→${route};`
+                object.route = route
+            }
+            if(streetNumber){
+                history.what = `${history.what} streetNumber:${object.streetNumber}→${streetNumber};`
+                object.streetNumber = streetNumber
+            }
+            if(bType_v2!=undefined){
+                history.what = `${history.what} bType_v2:${object.bType_v2}→${bType_v2};`
+                object.bType_v2 = bType_v2
+            }
+            if(ugns_v2!=undefined){
+                history.what = `${history.what} ugns_v2:${object.ugns_v2}→${ugns_v2};`
+                object.ugns_v2 = ugns_v2
+            }
+            if(pType_v2!=undefined){
+                history.what = `${history.what} pType_v2:${object.pType_v2}→${pType_v2};`
+                object.pType_v2 = pType_v2
             }
             if(geo){
                 history.what = `${history.what} Геолокация;`
                 object.geo = geo
             }
-
-            if(name||bType||pType||ugns||address||geo||!object.sync) {
-                let inn = await LegalObject.findOne({_id: object.legalObject, sync: true}).select('inn').lean()
-                if(inn) {
-                    inn = inn.inn
-                    let sync = await registerSalesPoint({
-                        tpInn: inn,
-                        name: object.name,
-                        pType: object.pType === 'Прочее' ? '9999' : pTypes.indexOf(object.pType),
-                        bType: object.bType === 'Прочее' ? '9999' : bTypes.indexOf(object.bType),
-                        ugns: ugnsTypes[object.ugns],
-                        factAddress: object.address,
-                        xCoordinate: object.geo ? object.geo[0] : null,
-                        yCoordinate: object.geo ? object.geo[1] : null,
-                        regType: !object.uniqueId ? '1' : '2',
-                        uniqueId: object.uniqueId
-                    })
-                    object.sync = sync.sync
-                    object.syncMsg = sync.syncMsg
-                    if (!object.uniqueId && sync.uniqueId) object.uniqueId = sync.uniqueId
-                }
-                else {
-                    object.sync = false
-                    object.syncMsg = 'Нет ИНН'
-                }
-            }
-
             await object.save();
             await History.create(history)
+
+            let cashboxes = await Cashbox.find({branch: _id, del: {$ne: true}}).lean()
+            for(let i=0; i<cashboxes.length; i++) {
+                await reregisterCashbox(cashboxes[i])
+            }
+
             return 'OK'
         }
         return 'ERROR'
@@ -238,30 +236,6 @@ const resolversMutation = {
         if(['admin', 'superadmin'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())) {
             let object = await Branch.findOne({_id})
             object.del = true
-
-            let inn = await LegalObject.findOne({_id: object.legalObject, sync: true}).select('inn').lean()
-            if(inn) {
-                inn = inn.inn
-                let sync = await registerSalesPoint({
-                    tpInn: inn,
-                    name: object.name,
-                    pType: object.pType==='Прочее'?'9999':pTypes.indexOf(object.pType),
-                    bType: object.bType==='Прочее'?'9999':bTypes.indexOf(object.bType),
-                    ugns: ugnsTypes[object.ugns],
-                    factAddress: object.address,
-                    xCoordinate: object.geo?object.geo[0]:null,
-                    yCoordinate: object.geo?object.geo[1]:null,
-                    regType: '3',
-                    uniqueId: object.uniqueId
-                })
-                object.sync = sync.sync
-                object.syncMsg = sync.syncMsg
-                if(!object.uniqueId&&sync.uniqueId) object.uniqueId = sync.uniqueId
-            }
-            else {
-                object.sync = false
-                object.syncMsg = 'Нет ИНН'
-            }
             await object.save();
 
             await District.updateMany({branchs: _id}, {$pull: { branchs: _id}})
@@ -280,30 +254,6 @@ const resolversMutation = {
         if(['admin', 'superadmin'].includes(user.role)&&user.add) {
             let object = await Branch.findOne({_id})
             object.del = false
-
-            let inn = await LegalObject.findOne({_id: object.legalObject, sync: true}).select('inn').lean()
-            if(inn) {
-                inn = inn.inn
-                let sync = await registerSalesPoint({
-                    tpInn: inn,
-                    name: object.name,
-                    pType: object.pType==='Прочее'?'9999':pTypes.indexOf(object.pType),
-                    bType: object.bType==='Прочее'?'9999':bTypes.indexOf(object.bType),
-                    ugns: ugnsTypes[object.ugns],
-                    factAddress: object.address,
-                    xCoordinate: object.geo?object.geo[0]:null,
-                    yCoordinate: object.geo?object.geo[1]:null,
-                    regType: !object.uniqueId?'1':'2',
-                    uniqueId: object.uniqueId
-                })
-                object.sync = sync.sync
-                object.syncMsg = sync.syncMsg
-                if(sync.uniqueId&&!object.uniqueId) object.uniqueId = sync.uniqueId
-            }
-            else {
-                object.sync = false
-                object.syncMsg = 'Нет ИНН'
-            }
 
             await object.save();
             let history = new History({

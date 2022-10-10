@@ -74,7 +74,7 @@ const resolvers = {
                 ...cashier ? {cashier} : {},
             })
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .sort('-createdAt')
                 .populate({
                     path: 'cashier',
@@ -193,11 +193,11 @@ const resolvers = {
                 })
                 .populate({
                     path: 'cashbox',
-                    select: 'name _id rnmNumber'
+                    select: 'name _id rnmNumber fnExpiresAt fn registrationNumber'
                 })
                 .populate({
                     path: 'legalObject',
-                    select: 'name _id inn rateTaxe'
+                    select: 'name _id inn rateTaxe taxSystem_v2'
                 })
                 .populate({
                     path: 'branch',

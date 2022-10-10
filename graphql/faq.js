@@ -30,7 +30,7 @@ const resolvers = {
                 ...!['admin', 'superadmin'].includes(user.role)?{roles: user.role}:{}
             })
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .sort('name')
                 .lean()
         }

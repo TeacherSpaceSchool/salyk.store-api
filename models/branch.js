@@ -5,11 +5,22 @@ const BranchSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'LegalObjectSALYK'
     },
+
+    bType_v2: Number,
+    pType_v2: Number,
+    ugns_v2: Number,
+
     bType: String,
     pType: String,
     ugns: String,
+
     name: String,
     address: String,
+    locality: String,
+    postalCode: String,
+    route: String,
+    streetNumber: String,
+    calcItemAttribute: Number,
     status: String,
     geo: [Number],
     uniqueId: String,

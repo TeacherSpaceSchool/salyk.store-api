@@ -1,8 +1,6 @@
 const mongoose = require('mongoose');
 
 const SyncKKMSchema = mongoose.Schema({
-    legalObjects: Number,
-    branchs: Number,
     cashboxes: Number,
     workShifts: Number,
     sales: Number,

@@ -19,6 +19,8 @@ const CashboxSchema = mongoose.Schema({
         default: 0
     },
     endPayment: Date,
+    fnExpiresAt: Date,
+    fn: String,
     del: Boolean,
     sale: {
         type: Number,
@@ -48,9 +50,15 @@ const CashboxSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
+    syncType: String,
     sync: Boolean,
     syncMsg: String,
-    rnmNumber: String
+    syncData: {
+        type: [[String]],
+        default: []
+    },
+    rnmNumber: String,
+    registrationNumber: String
 }, {
     timestamps: true
 });

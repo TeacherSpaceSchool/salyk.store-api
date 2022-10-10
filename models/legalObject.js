@@ -7,21 +7,21 @@ const LegalObjectSchema = mongoose.Schema({
         required: true,
         unique: true
     },
-    rateTaxe: String,
-    ndsType: String,
-    nspType: String,
     address: String,
     phone: [String],
     status: String,
-    taxpayerType: String,
     email: [String],
-    ugns: String,
     responsiblePerson: String,
-    regType: String,
     del: Boolean,
     payment: Boolean,
     sync: Boolean,
     syncMsg: String,
+    accessLogin: String,
+    accessPassword: String,
+    accessToken: String,
+    accessTokenTTL: Date,
+    refreshToken: String,
+    refreshTokenTTL: Date,
     ofd: {
         type: Boolean,
         default: true
@@ -30,6 +30,20 @@ const LegalObjectSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'UserSALYK'
     },
+    //v2
+    taxSystem_v2: Number,
+    ndsType_v2: Number,
+    nspType_v2: Number,
+    ugns_v2: Number,
+    vatPayer_v2: Boolean,
+    taxpayerType_v2: String,
+    //old
+    regType: String,
+    rateTaxe: String,
+    ndsType: String,
+    nspType: String,
+    taxpayerType: String,
+    ugns: String,
 }, {
     timestamps: true
 });

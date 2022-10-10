@@ -47,6 +47,7 @@ const type = `
     returnedBuyCount: Float
     sync: Boolean
     syncMsg: String
+    syncData: String
   }
 `;
 
@@ -109,7 +110,7 @@ const resolvers = {
                 ...workShift||user.role==='кассир'?user.role==='кассир'?{workShift: {$in: workShiftsCashier}}:{workShift}:{},
             })
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .sort('-createdAt')
                 .populate({
                     path: 'legalObject',
@@ -216,7 +217,7 @@ const resolvers = {
             })
                 .populate({
                     path: 'legalObject',
-                    select: 'name inn _id rateTaxe'
+                    select: 'name inn _id rateTaxe taxSystem_v2'
                 })
                 .populate({
                     path: 'branch',
@@ -224,7 +225,7 @@ const resolvers = {
                 })
                 .populate({
                     path: 'cashbox',
-                    select: 'name rnmNumber _id'
+                    select: 'name rnmNumber _id fn registrationNumber'
                 })
                 .populate({
                     path: 'workShift',

@@ -441,10 +441,8 @@ const resolvers = {
             dateStart.setMonth(11)
             dateStart.setDate(1)
             dateStart.setYear(2021)
-            let testedLegalObject = (await LegalObject.findOne({name: 'Налогоплательщик'}).select('_id').lean())._id
             let legalObjects = await LegalObject.find({
                 sync: {$ne: true},
-                _id: {$ne: testedLegalObject},
                 createdAt: {$gt: dateStart}
             }).select('_id name createdAt').lean()
             res[0].data[0] = legalObjects.length
@@ -460,7 +458,6 @@ const resolvers = {
             }
             let branchs = await Branch.find({
                 sync: {$ne: true},
-                legalObject: {$ne: testedLegalObject},
                 createdAt: {$gt: dateStart}
             })
                 .select('_id name createdAt').lean()
@@ -477,7 +474,6 @@ const resolvers = {
             }
             let cashboxes = await Cashbox.find({
                 sync: {$ne: true},
-                legalObject: {$ne: testedLegalObject},
                 createdAt: {$gt: dateStart}
             })
                 .select('_id name createdAt').lean()
@@ -495,7 +491,6 @@ const resolvers = {
             let workShifts = await WorkShift.find({
                 sync: {$ne: true},
                 syncMsg: {$ne: 'Фискальный режим отключен'},
-                legalObject: {$ne: testedLegalObject},
                 createdAt: {$gt: dateStart}
             })
                 .select('_id number createdAt').lean()
@@ -513,7 +508,6 @@ const resolvers = {
             let sales = await Sale.find({
                 sync: {$ne: true},
                 syncMsg: {$ne: 'Фискальный режим отключен'},
-                legalObject: {$ne: testedLegalObject},
                 createdAt: {$gt: dateStart}
             })
                 .select('_id number createdAt').lean()
@@ -531,7 +525,6 @@ const resolvers = {
             let reports = await Report.find({
                 sync: {$ne: true},
                 syncMsg: {$ne: 'Фискальный режим отключен'},
-                legalObject: {$ne: testedLegalObject},
                 type: 'Z',
                 createdAt: {$gt: dateStart}
             })
@@ -564,12 +557,12 @@ const resolvers = {
                     data: [
                         pdDDMMYYHHMM(syncKKMs[i].createdAt),
                         pdDDMMYYHHMM(syncKKMs[i].end),
-                        `${syncKKMs[i].legalObjects}/${syncKKMs[i].branchs}/${syncKKMs[i].cashboxes}/${syncKKMs[i].workShifts}/${syncKKMs[i].sales}/${syncKKMs[i].reports}`
+                        `${syncKKMs[i].cashboxes}/${syncKKMs[i].workShifts}/${syncKKMs[i].sales}/${syncKKMs[i].reports}`
                     ]
                 })
             }
             return {
-                columns: ['начало', 'конец', 'На/Об/Ка/См/Оп/От'],
+                columns: ['начало', 'конец', 'Ка/См/Оп/От'],
                 row: res
             };
         }

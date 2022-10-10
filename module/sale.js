@@ -9,7 +9,8 @@ const { ndsTypes, nspTypes } = require('../module/const');
 const Consignation = require('../models/consignation');
 const Prepayment = require('../models/prepayment');
 const mongoose = require('mongoose');
-const { check } = require('../module/kkm');
+const { check } = require('./kkm');
+const { sendReceipt } = require('./kkm-2.0');
 const QRCode = require('qrcode')
 
 module.exports.getIntegrationSales = async ({legalObject, skip, date, type, branch, cashbox, client, cashier, workShift}) => {
@@ -492,15 +493,20 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
             await cashbox.save()
             await workShift.save()
 
-            if(/*(await LegalObject.findOne({ofd: true, _id: user.legalObject}).select('ofd').lean())&&*/workShift.syncMsg!=='Фискальный режим отключен'){
-                if(cashbox.rnmNumber) {
+            if(workShift.syncMsg!=='Фискальный режим отключен'){
+                if(cashbox.fn) {
+                    let sync = await sendReceipt(newSale._id)
+                    await Sale.updateOne({_id: newSale._id}, {syncData: sync.syncData, qr: sync.qr, sync: sync.sync, syncMsg: sync.syncMsg})
+                }
+                else if(cashbox.rnmNumber) {
                     let qr = await QRCode.toDataURL(
                         `https://kkm.salyk.kg/kkm/check?rnmNumber=${cashbox.rnmNumber}&checkNumber=${number}&amount=${amountEnd}&date=${pdQRKKM(newSale.createdAt)}`
                     )
                     await Sale.updateOne({_id: newSale._id}, {qr})
                     check(newSale._id)
-                } else
-                    await Sale.updateOne({_id: newSale._id}, {sync: false, syncMsg: 'Нет rnmNumber'})
+                }
+                else
+                    await Sale.updateOne({_id: newSale._id}, {sync: false, syncMsg: 'Отсутсвуют данные для интеграции'})
             } else
                 await Sale.updateOne({_id: newSale._id}, {sync: true, syncMsg: 'Фискальный режим отключен'})
 

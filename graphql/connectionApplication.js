@@ -33,7 +33,7 @@ const resolvers = {
                 ...filter==='обработка'||'оператор'===user.role ? {taken: false} : {}
             })
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .sort('-createdAt')
                 .populate({
                     path: 'who',

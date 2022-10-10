@@ -41,7 +41,7 @@ const resolvers = {
                 del: {$ne: true},
             })
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .sort('name')
                 .populate({
                     path: 'legalObject',
@@ -62,7 +62,7 @@ const resolvers = {
                 del: {$ne: true},
             })
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .sort('name')
                 .populate({
                     path: 'legalObject',
@@ -97,7 +97,7 @@ const resolvers = {
                 ...legalObject?{legalObject}:{},
             })
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .sort('name')
                 .populate({
                     path: 'legalObject',

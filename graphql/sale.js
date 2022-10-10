@@ -6,6 +6,7 @@ const Cashbox = require('../models/cashbox');
 const District = require('../models/district');
 const { pdQRKKM, checkFloat, cashierMaxDay } = require('../module/const');
 const { check } = require('../module/kkm');
+const { sendReceipt } = require('../module/kkm-2.0');
 const QRCode = require('qrcode')
 
 const type = `
@@ -36,6 +37,7 @@ const type = `
     nds: Float
     sync: Boolean
     syncMsg: String
+    syncData: String
     nsp: Float
     items: [ItemSale]
     comment: String
@@ -87,7 +89,7 @@ const type = `
 const query = `
     sales(skip: Int, limit: Int, date: String, legalObject: ID, branch: ID, cashbox: ID, client: ID, type: String, cashier: ID, workShift: ID): [Sale]
     salesCount(date: String, legalObject: ID, branch: ID, cashbox: ID, client: ID, type: String, cashier: ID, workShift: ID, newSale: Boolean): SalesCount
-    sale(_id: ID!, rnmNumber: String, number: String, type: String): Sale
+    sale(_id: ID!, cashbox: ID, number: String, type: String): Sale
 `;
 
 const mutation = `
@@ -141,7 +143,7 @@ const resolvers = {
                 ...cashier?{cashier}:{},
             })
                 .skip(skip != undefined ? skip : 0)
-                .limit(limit? limit : skip != undefined ? 15 : 10000000000)
+                .limit(limit? limit : skip != undefined ? 30 : 10000000000)
                 .sort('-createdAt')
                 .populate({
                     path: 'client',
@@ -255,7 +257,7 @@ const resolvers = {
             return res
         }
     },
-    sale: async(parent, {_id, rnmNumber, number, type}, {user}) => {
+    sale: async(parent, {_id, cashbox, number, type}, {user}) => {
         if(/*['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер'].includes(user.role)*/true) {
             /*let districts = []
             if (user.role === 'супервайзер') {
@@ -265,16 +267,8 @@ const resolvers = {
                     .distinct('branchs')
                     .lean()
             }*/
-            if(rnmNumber) {
-                rnmNumber = await Cashbox.findOne({
-                    rnmNumber, ...user.legalObject ? {
-                        legalObject: user.legalObject,
-                        del: {$ne: true}
-                    } : {}
-                }).select('_id').lean()
-            }
             return await Sale.findOne({
-                ...rnmNumber&&number&&type?{number, cashbox: rnmNumber._id, type: type==='Возврат продажи'?{$in: ['Продажа', 'Кредит']}:type}:{_id},
+                ...cashbox&&number&&type?{number, cashbox, type: type==='Возврат продажи'?{$in: ['Продажа', 'Кредит']}:type}:{_id},
                 ...user.legalObject ? {legalObject: user.legalObject} : {},
                // ...'супервайзер' === user.role ? {branch: {$in: districts}} : {},
             })
@@ -284,7 +278,7 @@ const resolvers = {
                 })
                 .populate({
                     path: 'cashbox',
-                    select: 'name _id rnmNumber'
+                    select: 'name _id rnmNumber fnExpiresAt fn'
                 })
                 .populate({
                     path: 'client',
@@ -292,7 +286,7 @@ const resolvers = {
                 })
                 .populate({
                     path: 'legalObject',
-                    select: 'name _id inn rateTaxe'
+                    select: 'name _id inn rateTaxe taxSystem_v2'
                 })
                 .populate({
                     path: 'branch',
@@ -503,16 +497,21 @@ const resolversMutation = {
                 await cashbox.save()
                 await workShift.save()
 
-                if(/*(await LegalObject.findOne({ofd: true, _id: user.legalObject}).select('ofd').lean())&&*/workShift.syncMsg!=='Фискальный режим отключен'){
+                if(workShift.syncMsg!=='Фискальный режим отключен') {
 
-                    if(cashbox.rnmNumber) {
+                    if(cashbox.fn) {
+                        let sync = await sendReceipt(newSale._id)
+                        await Sale.updateOne({_id: newSale._id}, {syncData: sync.syncData, qr: sync.qr, sync: sync.sync, syncMsg: sync.syncMsg})
+                    }
+                    else if(cashbox.rnmNumber) {
                         let qr = await QRCode.toDataURL(
                             `https://kkm.salyk.kg/kkm/check?rnmNumber=${cashbox.rnmNumber}&checkNumber=${number}&amount=${amountEnd}&date=${pdQRKKM(newSale.createdAt)}`
                         )
                         await Sale.updateOne({_id: newSale._id}, {qr})
                         check(newSale._id)
-                    } else
-                        await Sale.updateOne({_id: newSale._id}, {sync: false, syncMsg: 'Нет rnmNumber'})
+                    }
+                    else
+                        await Sale.updateOne({_id: newSale._id}, {sync: false, syncMsg: 'Отсутсвуют данные для интеграции'})
 
                 } else
                     await Sale.updateOne({_id: newSale._id}, {sync: true, syncMsg: 'Фискальный режим отключен'})

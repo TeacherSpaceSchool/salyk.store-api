@@ -6,8 +6,8 @@ const WorkShift = require('../models/workshift');
 const User = require('../models/user');
 const History = require('../models/history');
 const District = require('../models/district');
-const {tpDataByINNforBusinessActivity, registerTaxPayer} = require('../module/kkm');
-const {ugnsTypes, taxpayerTypes} = require('../module/const');
+const {authLogin} = require('../module/kkm-2.0');
+const {ndsTypes, nspTypes, taxSystems, ugnses} = require('../module/kkm-2.0-catalog');
 
 const type = `
   type LegalObject {
@@ -19,30 +19,32 @@ const type = `
     address: String
     phone: [String]
     status: String
-    taxpayerType: String
-    ugns: String
     responsiblePerson: String
     del: Boolean
     ofd: Boolean
     sync: Boolean
     syncMsg: String
     agent: User
+    
+    taxSystem_v2: Int
+    ndsType_v2: Int
+    nspType_v2: Int
+    ugns_v2: Int
+    vatPayer_v2: Boolean
+    taxpayerType_v2: String
+  
     rateTaxe: String
-    ndsType: String
-    nspType: String
-  }
-  type INN {
-    inn: String
-    rayonCode: String
-    fullName: String
-    ZIP: String
-    fullAddress: String
-    message: String
+    
+    accessLogin: String
+    accessPassword: String
+    accessToken: String
+    accessTokenTTL: Date
+    refreshToken: String
+    refreshTokenTTL: Date
   }
 `;
 
 const query = `
-    tpDataByINNforBusinessActivity(inn: String): INN
     legalObjects(skip: Int, search: String): [LegalObject]
     legalObjectsCount(search: String): Int
     legalObjectsTrash(skip: Int, search: String): [LegalObject]
@@ -50,19 +52,14 @@ const query = `
 `;
 
 const mutation = `
-    addLegalObject(name: String!, agent: ID, rateTaxe: String!, ndsType: String!, nspType: String!, ofd: Boolean!, inn: String!, address: String!, email: [String]!, phone: [String]!, taxpayerType: String!, ugns: String!, responsiblePerson: String!): String
-    setLegalObject(_id: ID!, name: String, agent: ID, rateTaxe: String, ofd: Boolean, address: String, ndsType: String, nspType: String, email: [String], phone: [String], taxpayerType: String, ugns: String, responsiblePerson: String): String
+    addLegalObject(name: String!, accessLogin: String!, taxSystem_v2: Int!, taxpayerType_v2: String!, ndsType_v2: Int!, nspType_v2: Int!, ugns_v2: Int!, vatPayer_v2: Boolean!, accessPassword: String!, agent: ID, ofd: Boolean!, inn: String!, address: String!, email: [String]!, phone: [String]!, responsiblePerson: String!): String
+    setLegalObject(_id: ID!, name: String, accessLogin: String, accessPassword: String, taxpayerType_v2: String, taxSystem_v2: Int, ndsType_v2: Int, nspType_v2: Int, ugns_v2: Int, vatPayer_v2: Boolean, agent: ID, ofd: Boolean, address: String, email: [String], phone: [String], responsiblePerson: String): String
     onoffLegalObject(_id: ID!): String
     deleteLegalObject(_id: ID!): String
     restoreLegalObject(_id: ID!): String
 `;
 
 const resolvers = {
-    tpDataByINNforBusinessActivity: async(parent, {inn}, {user}) => {
-        if(['admin', 'superadmin', 'оператор'].includes(user.role)) {
-            return tpDataByINNforBusinessActivity(inn)
-        }
-    },
     legalObjects: async(parent, {skip, search}, {user}) => {
         if(['admin', 'superadmin'].includes(user.role)||search&&search.length>2&&user.role==='оператор') {
             return await LegalObject.find({
@@ -70,7 +67,7 @@ const resolvers = {
                 del: {$ne: true},
             })
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .select('_id createdAt name inn address phone status del sync')
                 .sort('name')
                 .lean()
@@ -94,7 +91,7 @@ const resolvers = {
                 del: true
             })
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .select('_id createdAt name inn address phone status _id del sync')
                 .sort('name')
                 .lean()
@@ -113,46 +110,39 @@ const resolvers = {
                 .lean()
             return user.role==='кассир'?{
                 _id: res._id,
-                ndsType: res.ndsType,
-                nspType: res.nspType
+                ndsType_v2: res.ndsType_v2,
+                nspType_v2: res.nspType_v2,
             }:res
         }
     },
 };
 
 const resolversMutation = {
-    addLegalObject: async(parent, {name, agent, rateTaxe, ndsType, nspType, inn, address, phone, taxpayerType, ugns, email, responsiblePerson, ofd}, {user}) => {
-        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add&&name!=='Налогоплательщик'&&!(await LegalObject.findOne({inn}).select('_id').lean())) {
+    addLegalObject: async(parent, {name, accessLogin, accessPassword, taxpayerType_v2, taxSystem_v2, ndsType_v2, nspType_v2, ugns_v2, vatPayer_v2, agent, inn, address, phone, email, responsiblePerson, ofd}, {user}) => {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add&&!(await LegalObject.findOne({inn}).select('_id').lean())) {
             let _object = new LegalObject({
                 name,
                 inn,
-                ndsType,
-                nspType,
+                taxSystem_v2,
+                ndsType_v2,
                 address,
                 agent,
                 phone,
+                accessLogin,
+                sync: true,
+                syncMsg: '',
+                accessPassword,
+                taxpayerType_v2,
                 status: 'active',
-                taxpayerType,
-                ugns,
+                ugns_v2,
                 email,
-                rateTaxe,
+                nspType_v2,
+                vatPayer_v2,
                 responsiblePerson,
                 ofd: ['superadmin', 'admin'].includes(user.role)?ofd:true
             });
-
-            let sync = await registerTaxPayer({
-                tpType: taxpayerTypes[taxpayerType],
-                inn,
-                name,
-                ugns: ugnsTypes[ugns],
-                legalAddress: address,
-                responsiblePerson,
-                regType: '1'
-            })
-            _object.sync = sync.sync
-            _object.syncMsg = sync.syncMsg
-
             _object = await LegalObject.create(_object)
+            await authLogin(_object._id)
             let categoryLegalObject = new CategoryLegalObject({
                 categorys: [],
                 legalObject: _object._id
@@ -168,7 +158,7 @@ const resolversMutation = {
         }
         return 'ERROR'
     },
-    setLegalObject: async(parent, {_id, agent, rateTaxe, name, ndsType, nspType, address, phone, email, taxpayerType, ugns, ofd, responsiblePerson}, {user}) => {
+    setLegalObject: async(parent, {_id, agent, accessLogin, accessPassword, name, taxpayerType_v2, taxSystem_v2, ndsType_v2, nspType_v2, ugns_v2, vatPayer_v2, address, phone, email, ofd, responsiblePerson}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())) {
             let object = await LegalObject.findById(_id)
             let history = new History({
@@ -176,7 +166,7 @@ const resolversMutation = {
                 where: object._id,
                 what: ''
             });
-            if(name&&name!=='Налогоплательщик'){
+            if(name){
                 history.what = `name:${object.name}→${name};`
                 object.name = name
             }
@@ -184,33 +174,51 @@ const resolversMutation = {
                 history.what = `${history.what} agent:${object.agent}→${agent};`
                 object.agent = agent
             }
+            if(accessLogin){
+                history.what = `${history.what} accessLogin:${object.accessLogin}→${accessLogin};`
+                object.accessLogin = accessLogin
+            }
+            if(taxpayerType_v2!=undefined){
+                history.what = `${history.what} taxpayerType_v2:${object.taxpayerType_v2}→${taxpayerType_v2};`
+                object.taxpayerType_v2 = taxpayerType_v2
+            }
+            if(accessPassword){
+                history.what = `${history.what} accessPassword:${object.accessPassword}→${accessPassword};`
+                object.accessPassword = accessPassword
+            }
+            if(accessLogin||accessPassword) {
+                object.accessToken = null
+                object.accessTokenTTL = null
+                object.refreshToken = null
+                object.refreshTokenTTL = null
+            }
             if(address){
                 history.what = `${history.what} address:${object.address}→${address};`
                 object.address = address
             }
-            if(ndsType){
-                history.what = `${history.what} ndsType:${object.ndsType}→${ndsType};`
-                object.ndsType = ndsType
+            if(ndsType_v2!=undefined){
+                history.what = `${history.what} ndsType_v2:${ndsTypes[object.ndsType_v2]}→${ndsTypes[ndsType_v2]};`
+                object.ndsType_v2 = ndsType_v2
             }
-            if(nspType){
-                history.what = `${history.what} nspType:${object.nspType}→${nspType};`
-                object.nspType = nspType
+            if(nspType_v2!=undefined){
+                history.what = `${history.what} nspType_v2:${nspTypes[object.nspType_v2]}→${nspTypes[nspType_v2]};`
+                object.nspType_v2 = nspType_v2
             }
-            if(rateTaxe){
-                history.what = `${history.what} rateTaxe:${object.rateTaxe}→${rateTaxe};`
-                object.rateTaxe = rateTaxe
+            if(taxSystem_v2!=undefined){
+                history.what = `${history.what} taxSystem_v2:${taxSystems[object.taxSystem_v2]}→${taxSystems[taxSystem_v2]};`
+                object.taxSystem_v2 = taxSystem_v2
             }
             if(phone){
                 history.what = `${history.what} phone:${object.phone}→${phone};`
                 object.phone = phone
             }
-            if(taxpayerType){
-                history.what = `${history.what} taxpayerType:${object.taxpayerType}→${taxpayerType};`
-                object.taxpayerType = taxpayerType
+            if(vatPayer_v2!=undefined){
+                history.what = `${history.what} vatPayer_v2:${object.vatPayer_v2}→${vatPayer_v2};`
+                object.vatPayer_v2 = vatPayer_v2
             }
-            if(ugns){
-                history.what = `${history.what} ugns:${object.ugns}→${ugns};`
-                object.ugns = ugns
+            if(ugns_v2!=undefined){
+                history.what = `${history.what} ugns_v2:${ugnses[object.ugns_v2]}→${ugnses[ugns_v2]};`
+                object.ugns_v2 = ugns_v2
             }
             if(responsiblePerson){
                 history.what = `${history.what} responsiblePerson:${object.responsiblePerson}→${responsiblePerson};`
@@ -224,22 +232,10 @@ const resolversMutation = {
                 history.what = `${history.what} ofd:${object.ofd}→${ofd};`
                 object.ofd = ofd
             }
-
-            if(name||taxpayerType||ugns||address||responsiblePerson||!object.sync) {
-                let sync = await registerTaxPayer({
-                    tpType: taxpayerTypes[object.taxpayerType],
-                    inn: object.inn,
-                    name: object.name,
-                    ugns: ugnsTypes[object.ugns],
-                    legalAddress: object.address,
-                    responsiblePerson: object.responsiblePerson,
-                    regType: '2'
-                })
-                object.sync = sync.sync
-                object.syncMsg = sync.syncMsg
-            }
-
             await object.save();
+            let now = new Date()
+            if(!object.refreshToken||object.accessTokenTTL<now||object.refreshTokenTTL<now)
+                await authLogin(object._id)
             await History.create(history)
             return 'OK'
         }
@@ -266,19 +262,6 @@ const resolversMutation = {
         if(['admin', 'superadmin'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())) {
             let object = await LegalObject.findOne({_id})
             object.del = true
-
-            let sync = await registerTaxPayer({
-                tpType: taxpayerTypes[object.taxpayerType],
-                inn: object.inn,
-                name: object.name,
-                ugns: ugnsTypes[object.ugns],
-                legalAddress: object.address,
-                responsiblePerson: object.responsiblePerson,
-                regType: '3'
-            })
-            object.sync = sync.sync
-            object.syncMsg = sync.syncMsg
-
             await object.save();
             await User.updateMany({legalObject: _id}, {status: 'deactive'})
             await Integration.deleteOne({legalObject: _id})
@@ -298,19 +281,6 @@ const resolversMutation = {
         if(['admin', 'superadmin'].includes(user.role)&&user.add) {
             let object = await LegalObject.findOne({_id})
             object.del = false
-
-            let sync = await registerTaxPayer({
-                tpType: taxpayerTypes[object.taxpayerType],
-                inn: object.inn,
-                name: object.name,
-                ugns: ugnsTypes[object.ugns],
-                legalAddress: object.address,
-                responsiblePerson: object.responsiblePerson,
-                regType: '2'
-            })
-            object.sync = sync.sync
-            object.syncMsg = sync.syncMsg
-
             await object.save();
             let history = new History({
                 who: user._id,

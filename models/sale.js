@@ -66,6 +66,7 @@ const SaleSchema = mongoose.Schema({
         tnved: String,
         mark: Boolean
     }],
+    syncData: String,
 }, {
     timestamps: true
 });

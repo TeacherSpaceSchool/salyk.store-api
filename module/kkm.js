@@ -44,71 +44,6 @@ const xmlKKM = (serviceCode, request) => {
     return xmlKKM
 };
 
-module.exports.tpDataByINNforBusinessActivity = async (inn)=>{
-    let resXml = ''
-    try{
-        let xml = {
-            'soapenv:Envelope': {
-                '@xmlns:soapenv': 'http://schemas.xmlsoap.org/soap/envelope/',
-                '@xmlns:xro': 'http://x-road.eu/xsd/xroad.xsd',
-                '@xmlns:iden': 'http://x-road.eu/xsd/identifiers',
-                '@xmlns:prod': 'http://gns-security-server.x-road.fi/producer',
-                'soapenv:Header': {
-                    'xro:protocolVersion': '4.0',
-                    'xro:id': '630887d7-706c-4939-a285-479078d459df',
-                    'xro:service': {
-                        '@iden:objectType': 'SERVICE',
-                        'iden:xRoadInstance': 'central-server',
-                        'iden:memberClass': 'GOV',
-                        'iden:memberCode': '70000002',
-                        'iden:subsystemCode': 'gns-service',
-                        'iden:serviceCode': 'tpDataByINNforBusinessActivity',
-                        'iden:serviceVersion': 'v1'
-                    },
-                    'xro:client': {
-                        '@iden:objectType': 'SUBSYSTEM',
-                        'iden:xRoadInstance': 'central-server',
-                        'iden:memberClass': 'COM',
-                        'iden:memberCode': memberCode,
-                        'iden:subsystemCode': subsystemCode
-                    },
-                },
-                'soapenv:Body': {
-                    'prod:tpDataByINNforBusinessActivity': {
-                        'prod:request': {
-                            'prod:inn': inn
-                        }
-                    }
-                }
-            }
-        }
-        xml = (builder.create(xml, {separateArrayItems: true})).end({ pretty: true})
-        //console.log(xml)
-        let config = {
-            headers: {'Content-Type': 'text/xml;charset=UTF-8', 'Accept': 'text/xml;charset=UTF-8'}
-        };
-        let res = await axios.post(url, xml, config)
-        //console.log(res.data)
-        resXml = res.data
-        res = await xml2js(res.data, {compact: true})
-        return res['SOAP-ENV:Envelope']['SOAP-ENV:Body']['ts1:tpDataByINNforBusinessActivityResponse']['ts1:response']['ts1:inn']['_text']?{
-            inn: res['SOAP-ENV:Envelope']['SOAP-ENV:Body']['ts1:tpDataByINNforBusinessActivityResponse']['ts1:response']['ts1:inn']['_text'],
-            rayonCode: res['SOAP-ENV:Envelope']['SOAP-ENV:Body']['ts1:tpDataByINNforBusinessActivityResponse']['ts1:response']['ts1:RayonCode']['_text'],
-            fullName: res['SOAP-ENV:Envelope']['SOAP-ENV:Body']['ts1:tpDataByINNforBusinessActivityResponse']['ts1:response']['ts1:FullName']['_text'],
-            ZIP: res['SOAP-ENV:Envelope']['SOAP-ENV:Body']['ts1:tpDataByINNforBusinessActivityResponse']['ts1:response']['ts1:ZIP']['_text'],
-            fullAddress: res['SOAP-ENV:Envelope']['SOAP-ENV:Body']['ts1:tpDataByINNforBusinessActivityResponse']['ts1:response']['ts1:FullAddress']['_text']
-        }:{message: 'Неверный ИНН'}
-    } catch (err) {
-        let _object = new ModelsError({
-            err: `${resXml} ${err.message}`,
-            path: 'tpDataByINNforBusinessActivity'
-        });
-        await ModelsError.create(_object)
-        console.error(err)
-        return {message: 'Ошибка'}
-    }
-};
-
 module.exports.registerTaxPayer = async ({
                                              tpType,
                                              inn,
@@ -321,6 +256,7 @@ module.exports.check = async (_id)=>{
             taxes: tax?[{tax}]:{}
         }})
         xml = (builder.create(xml, {separateArrayItems: true})).end({ pretty: true})
+        //console.log(xml)
         let config = {
             headers: {'Content-Type': 'text/xml;charset=UTF-8', 'Accept': 'text/xml;charset=UTF-8'}
         };

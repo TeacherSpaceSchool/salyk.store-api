@@ -1,5 +1,4 @@
 const { createAdmin } = require('./user');
-const { createTestLegalObject } = require('./legalObject');
 const { Worker, isMainThread } = require('worker_threads');
 const Cashbox = require('../models/cashbox');
 const Branch = require('../models/branch');
@@ -52,7 +51,6 @@ let start = async () => {
     console.log(await WorkShift.updateMany({legalObject, createdAt: {$gt: dateStart}}, {sync: false}))
     console.log(await Report.updateMany({legalObject, createdAt: {$gt: dateStart}}, {sync: false}))
 */
-    await createTestLegalObject();
     await createAdmin();
     await startResetUnloading()
     console.log(await SyncKKM.deleteMany({end: null}))

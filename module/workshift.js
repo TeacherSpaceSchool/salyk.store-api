@@ -5,7 +5,8 @@ const IntegrationObject = require('../models/integrationObject');
 const User = require('../models/user');
 const {psDDMMYYYYHHMM, pdDDMMYYYYHHMM} = require('./const');
 const {pdKKM} = require('../module/const');
-const {openShift} = require('../module/kkm');
+const {openShift} = require('./kkm');
+const {openShift2} = require('./kkm-2.0');
 
 module.exports.getIntegrationWorkShifts = async ({skip, legalObject, branch, cashier, cashbox, active, date}) => {
     if(branch){
@@ -213,26 +214,27 @@ module.exports.putIntegrationOpenWorkshift  = async ({legalObject, cashier, cash
         });
 
 
-        if((await LegalObject.findOne({ofd: true, _id: legalObject}).select('ofd').lean())){
-            if(!cashbox.rnmNumber) {
-                workShift.sync = false
-                workShift.syncMsg = 'Нет rnmNumber'
-            }
-        }
-        else {
+        if(!(await LegalObject.findOne({ofd: true, _id: legalObject}).select('ofd').lean())){
             workShift.sync = true
             workShift.syncMsg = 'Фискальный режим отключен'
         }
 
         workShift = await WorkShift.create(workShift)
 
-        if(!['Нет rnmNumber', 'Фискальный режим отключен'].includes(workShift.syncMsg)) {
-            openShift({
-                workShift: workShift._id,
-                rnmNumber: cashbox.rnmNumber,
-                number,
-                date: pdKKM(start)
-            })
+        if(workShift.syncMsg!=='Фискальный режим отключен') {
+            if(cashbox.fn) {
+                let sync = await openShift2(cashbox.fn)
+                await WorkShift.updateOne({_id: workShift._id}, {syncData: sync.syncData, sync: sync.sync, syncMsg: sync.syncMsg})
+            }
+            else if(cashbox.rnmNumber)
+                openShift({
+                    workShift: workShift._id,
+                    rnmNumber: cashbox.rnmNumber,
+                    number,
+                    date: pdKKM(start)
+                })
+            else
+                await WorkShift.updateOne({_id: workShift._id}, {sync: false, syncMsg: 'Отсутсвуют данные для интеграции'})
         }
 
         return {status: 'успех', res: workShift._id}

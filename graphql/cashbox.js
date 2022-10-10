@@ -1,9 +1,9 @@
 const Cashbox = require('../models/cashbox');
-const Branch = require('../models/branch');
 const District = require('../models/district');
 const IntegrationObject = require('../models/integrationObject');
 const History = require('../models/history');
-const {registerKkm} = require('../module/kkm');
+const {registerCashbox, getCashboxState, deleteCashbox, reregisterCashbox} = require('../module/kkm-2.0');
+const randomstring = require('randomstring');
 
 const type = `
   type Cashbox {
@@ -19,18 +19,21 @@ const type = `
     sync: Boolean
     syncMsg: String
     rnmNumber: String
+    fnExpiresAt: Date
+    fn: String
+    registrationNumber: String
+    syncData: [[String]]
   }
 `;
 
 const query = `
-    cashboxes(skip: Int, search: String, legalObject: ID, branch: ID, filter: String, all: Boolean): [Cashbox]
-    cashboxesCount(search: String, legalObject: ID, branch: ID, filter: String): Int
-    cashboxesTrash(skip: Int, search: String): [Cashbox]
+    cashboxes(skip: Int, search: String, legalObject: ID, branch: ID, filter: String, all: Boolean, del: Boolean): [Cashbox]
+    cashboxesCount(search: String, legalObject: ID, branch: ID, filter: String, del: Boolean): Int
     cashbox(_id: ID!): Cashbox
 `;
 
 const mutation = `
-    addCashbox(name: String!, legalObject: ID!, branch: ID!): String
+    addCashbox(name: String!, fn: String!, legalObject: ID!, branch: ID!): String
     setCashbox(_id: ID!, name: String, branch: ID): String
     clearCashbox(_id: ID!): String
     deleteCashbox(_id: ID!): String
@@ -38,7 +41,7 @@ const mutation = `
 `;
 
 const resolvers = {
-    cashboxes: async(parent, {skip, search, legalObject, branch, filter, all}, {user}) => {
+    cashboxes: async(parent, {skip, search, legalObject, branch, filter, all, del}, {user}) => {
         if(['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер'].includes(user.role)||(search&&search.length>2||all)&&user.role==='оператор') {
             if(user.legalObject) legalObject = user.legalObject
             let districts = []
@@ -49,11 +52,16 @@ const resolvers = {
                     .distinct('branchs')
                     .lean()
             return await Cashbox.find({
-                del: {$ne: true},
+                del: del?true:{$ne: true},
                 ...filter==='active'?{presentCashier: {$ne: null}}:filter==='deactive'?{presentCashier: null}:{},
-                ...search&&search.length?{$or: [{rnmNumber: {'$regex': search, '$options': 'i'}}, {name: {'$regex': search, '$options': 'i'}}]}:{},
+                ...search&&search.length?{$or: [
+                    {registrationNumber: {'$regex': search, '$options': 'i'}},
+                    {rnmNumber: {'$regex': search, '$options': 'i'}},
+                    {name: {'$regex': search, '$options': 'i'}},
+                    {fn: {'$regex': search, '$options': 'i'}}
+                ]}:{},
                 ...legalObject ? {legalObject} : {},
-                ...['супервайзер', 'кассир'].includes(user.role)||branch?{
+                ...'кассир'===user.role&&!all||'супервайзер'===user.role||branch?{
                     $and: [
                         ...user.role==='супервайзер'?[{branch: {$in: districts}}]:[],
                         ...user.role==='кассир'?[{branch: user.branch}]:[],
@@ -62,7 +70,7 @@ const resolvers = {
                 }:{}
             })
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .sort('name')
                 .populate({
                     path: 'presentCashier',
@@ -80,7 +88,7 @@ const resolvers = {
         }
         return []
     },
-    cashboxesCount: async(parent, {search, legalObject, branch, filter}, {user}) => {
+    cashboxesCount: async(parent, {search, legalObject, branch, filter, del}, {user}) => {
         if(['admin', 'superadmin', 'управляющий', 'супервайзер'].includes(user.role)||search&&search.length>2&&user.role==='оператор') {
             if(user.legalObject) legalObject = user.legalObject
             let districts = []
@@ -93,8 +101,13 @@ const resolvers = {
             }
             return await Cashbox.countDocuments({
                 ...filter==='active'?{presentCashier: {$ne: null}}:filter==='deactive'?{presentCashier: null}:{},
-                del: {$ne: true},
-                ...search&&search.length?{$or: [{rnmNumber: {'$regex': search, '$options': 'i'}}, {name: {'$regex': search, '$options': 'i'}}]}:{},
+                del: del?true:{$ne: true},
+                ...search&&search.length?{$or: [
+                    {registrationNumber: {'$regex': search, '$options': 'i'}},
+                    {rnmNumber: {'$regex': search, '$options': 'i'}},
+                    {name: {'$regex': search, '$options': 'i'}},
+                    {fn: {'$regex': search, '$options': 'i'}}
+                ]}:{},
                 ...legalObject ? {legalObject: legalObject} : {},
                 ...['супервайзер', 'кассир'].includes(user.role)||branch?{
                     $and: [
@@ -107,30 +120,6 @@ const resolvers = {
                 .lean()
         }
         return 0
-    },
-    cashboxesTrash: async(parent, {skip, search}, {user}) => {
-        if(['admin', 'superadmin'].includes(user.role)) {
-            return await Cashbox.find({
-                ...search&&search.length?{$or: [{rnmNumber: {'$regex': search, '$options': 'i'}}, {name: {'$regex': search, '$options': 'i'}}]}:{},
-                del: true
-            })
-                .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
-                .sort('name')
-                .populate({
-                    path: 'presentCashier',
-                    select: 'name _id role'
-                })
-                .populate({
-                    path: 'legalObject',
-                    select: 'name _id'
-                })
-                .populate({
-                    path: 'branch',
-                    select: 'name _id'
-                })
-                .lean()
-        }
     },
     cashbox: async(parent, {_id}, {user}) => {
         if(['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер', 'оператор'].includes(user.role)) {
@@ -154,11 +143,11 @@ const resolvers = {
                 })
                 .populate({
                     path: 'legalObject',
-                    select: 'name _id'
+                    select: 'name _id inn taxSystem_v2 vatPayer_v2'
                 })
                 .populate({
                     path: 'branch',
-                    select: 'name _id'
+                    select: 'name _id bType_v2 pType_v2 ugns_v2 calcItemAttribute address'
                 })
                 .lean()
             return res
@@ -167,31 +156,32 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addCashbox: async(parent, {name, legalObject, branch}, {user}) => {
+    addCashbox: async(parent, {name, legalObject, branch, fn}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {
-           let _object = new Cashbox({
+            let _object = new Cashbox({
                 name,
                 legalObject,
                 branch,
+                fn,
                 cash: 0
             });
 
-           let uniqueId = (await Branch.findById(branch).select('uniqueId').lean()).uniqueId
-           if(uniqueId) {
-                let sync = await registerKkm({
-                    spId: uniqueId,
-                    name,
-                    number: _object._id.toString(),
-                    regType: '1'
-                })
-                _object.sync = sync.sync
-                _object.syncMsg = sync.syncMsg
-                if (sync.rnmNumber) _object.rnmNumber = sync.rnmNumber
-           }
-           else {
-               _object.sync = false
-               _object.syncMsg = 'Нет uniqueId'
-           }
+            let sync = await registerCashbox(branch, _object._id, fn)
+            _object.syncMsg = sync
+            setTimeout(async()=>{
+                try {
+                    sync = await getCashboxState(fn)
+                    if (sync&&sync.fnExpiresAt)
+                        await Cashbox.updateOne({_id: _object._id}, {
+                            $push: {syncData: ['registerCashbox', JSON.stringify({date: new Date(), fields: {1040: 1, 1077: `0x${(randomstring.generate({length: 14, charset: 'numeric'})).toString(16)}`}})]},
+                            sync: true,
+                            fnExpiresAt: new Date(sync.fnExpiresAt),
+                            registrationNumber: sync.registrationNumber
+                        })
+                } catch (err) {
+                    console.error('setTimeout')
+                }
+            }, 30000)
 
             _object = await Cashbox.create(_object)
             let history = new History({
@@ -220,26 +210,32 @@ const resolversMutation = {
                 if (branch) {
                     history.what = `${history.what} branch:${object.branch}→${branch};`
                     object.branch = branch
-                }
-                if (name || branch || !object.sync) {
-                    let uniqueId = (await Branch.findById(object.branch).select('uniqueId').lean()).uniqueId
-                    if (uniqueId) {
-                        let sync = await registerKkm({
-                            spId: uniqueId,
-                            name: object.name,
-                            number: object._id.toString(),
-                            regType: !object.rnmNumber ? '1' : '2',
-                            rnmNumber: object.rnmNumber
-                        })
-                        object.sync = sync.sync
-                        object.syncMsg = sync.syncMsg
-                        if (sync.rnmNumber && !object.rnmNumber) object.rnmNumber = sync.rnmNumber
-                    }
-                    else {
-                        object.sync = false
-                        object.syncMsg = 'Нет uniqueId'
+                    if(object.sync&&object.fnExpiresAt) {
+                        await reregisterCashbox(object)
                     }
                 }
+
+                if(!object.sync) {
+                    let sync = await registerCashbox(object.branch, object._id, object.fn)
+                    object.syncMsg = sync
+                }
+                if(!object.fnExpiresAt) {
+                    setTimeout(async()=>{
+                        try {
+                            let sync = await getCashboxState(object.fn)
+                            if(sync&&sync.fnExpiresAt)
+                                await Cashbox.updateOne({_id: object._id}, {
+                                    $push: {syncData: ['registerCashbox', JSON.stringify({date: new Date(), fields: {1040: 1, 1077: `0x${(randomstring.generate({length: 14, charset: 'numeric'})).toString(16)}`}})]},
+                                    sync: true,
+                                    fnExpiresAt: new Date(sync.fnExpiresAt),
+                                    registrationNumber: sync.registrationNumber
+                                })
+                        } catch (err) {
+                            console.error('setTimeout')
+                        }
+                    }, 30000)
+                }
+
                 await object.save();
                 await History.create(history)
                 return 'OK'
@@ -278,35 +274,23 @@ const resolversMutation = {
         if(['admin', 'superadmin'].includes(user.role)&&user.add) {
             let object = await Cashbox.findOne({_id, presentCashier: null})
             if(object) {
+                //delete cashbox
+                let sync = await deleteCashbox(object._id, object.fn)
+                //delete cashbox
                 object.del = true
-
-                let uniqueId = (await Branch.findById(object.branch).select('uniqueId').lean()).uniqueId
-                if (uniqueId) {
-                    let sync = await registerKkm({
-                        spId: uniqueId,
-                        name: object.name,
-                        number: object._id.toString(),
-                        regType: '3',
-                        rnmNumber: object.rnmNumber
-                    })
-                    object.sync = sync.sync
-                    object.syncMsg = sync.syncMsg
-                    if (sync.rnmNumber && !object.rnmNumber) object.rnmNumber = sync.rnmNumber
+                if(sync) {
+                    await object.save()
+                    await IntegrationObject.deleteOne({cashbox: _id})
+                    let history = new History({
+                        who: user._id,
+                        where: _id,
+                        what: 'Удаление'
+                    });
+                    await History.create(history)
+                    return 'OK'
                 }
-                else {
-                    object.sync = false
-                    object.syncMsg = 'Нет uniqueId'
-                }
-
-                await object.save()
-                await IntegrationObject.deleteOne({cashbox: _id})
-                let history = new History({
-                    who: user._id,
-                    where: _id,
-                    what: 'Удаление'
-                });
-                await History.create(history)
-                return 'OK'
+                else
+                    return 'ERROR'
             }
         }
         return 'ERROR'
@@ -315,25 +299,6 @@ const resolversMutation = {
         if(['admin', 'superadmin'].includes(user.role)&&user.add) {
             let object = await Cashbox.findOne({_id})
             object.del = false
-
-            let uniqueId = (await Branch.findById(object.branch).select('uniqueId').lean()).uniqueId
-            if (uniqueId) {
-                let sync = await registerKkm({
-                    spId: uniqueId,
-                    name: object.name,
-                    number: object._id.toString(),
-                    regType: !object.rnmNumber?'1':'2',
-                    rnmNumber: object.rnmNumber
-                })
-                object.sync = sync.sync
-                object.syncMsg = sync.syncMsg
-                if (sync.rnmNumber && !object.rnmNumber) object.rnmNumber = sync.rnmNumber
-            }
-            else {
-                object.sync = false
-                object.syncMsg = 'Нет uniqueId'
-            }
-
             await object.save()
             let history = new History({
                 who: user._id,

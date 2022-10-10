@@ -22,6 +22,7 @@ const District = require('../models/district');
 
 const {ugnsTypes, pTypes, bTypes, taxpayerTypes} = require('../module/const');
 const {registerKkm, registerSalesPoint, registerTaxPayer} = require('../module/kkm');
+const {deleteCashbox} = require('../module/kkm-2.0');
 
 const type = `
   type FullDeleteLegalObject {
@@ -46,7 +47,7 @@ const resolvers = {
         if('superadmin'===user.role) {
             return await FullDeleteLegalObject.find()
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .sort('-createdAt')
                 .lean()
         }
@@ -87,28 +88,38 @@ const resolversMutation = {
                 let sync
                 let cashboxes = await Cashbox.find({legalObject: _id}).lean(), uniqueId
                 for (let i = 0; i < cashboxes.length; i++) {
-                    uniqueId = (await Branch.findById(cashboxes[i].branch).select('uniqueId').lean()).uniqueId
-                    if (uniqueId&&cashboxes[i].rnmNumber) {
-                        sync = await registerKkm({
-                            spId: uniqueId,
-                            name: cashboxes[i].name,
-                            number: cashboxes[i]._id.toString(),
-                            regType: '3',
-                            rnmNumber: cashboxes[i].rnmNumber
-                        })
-                        if (!sync.sync) {
+                   if(cashboxes[i].fn) {
+                        sync = await deleteCashbox(cashboxes[i]._id, cashboxes[i].fn)
+                        if (!sync) {
                             fullDeleteLegalObject.status = 'Ошибка cashboxes'
                             fullDeleteLegalObject.end = new Date()
                             await fullDeleteLegalObject.save()
                             return 'Ошибка cashboxes'
                         }
                     }
+                    else if(cashboxes[i].rnmNumber) {
+                       uniqueId = (await Branch.findById(cashboxes[i].branch).select('uniqueId').lean()).uniqueId
+                       if (uniqueId) {
+                           sync = await registerKkm({
+                               spId: uniqueId,
+                               name: cashboxes[i].name,
+                               number: cashboxes[i]._id.toString(),
+                               regType: '3',
+                               rnmNumber: cashboxes[i].rnmNumber
+                           })
+                           if (!sync.sync) {
+                               fullDeleteLegalObject.status = 'Ошибка cashboxes'
+                               fullDeleteLegalObject.end = new Date()
+                               await fullDeleteLegalObject.save()
+                               return 'Ошибка cashboxes'
+                           }
+                       }
+                   }
                 }
                 await Cashbox.deleteMany({legalObject: _id})
                 let branchs = await Branch.find({legalObject: _id}).lean()
-                for (let i = 0; i < cashboxes.length; i++) {
-                    uniqueId = (await Branch.findById(cashboxes[i].branch).select('uniqueId').lean()).uniqueId
-                    if (uniqueId) {
+                for (let i = 0; i < branchs.length; i++) {
+                    if (branchs[i].uniqueId) {
                         let sync = await registerSalesPoint({
                             tpInn: legalObject.inn,
                             name: branchs[i].name,
@@ -130,21 +141,22 @@ const resolversMutation = {
                     }
                 }
                 await Branch.deleteMany({legalObject: _id})
-
-                sync = await registerTaxPayer({
-                    tpType: taxpayerTypes[legalObject.taxpayerType],
-                    inn: legalObject.inn,
-                    name: legalObject.name,
-                    ugns: ugnsTypes[legalObject.ugns],
-                    legalAddress: legalObject.address,
-                    responsiblePerson: legalObject.responsiblePerson,
-                    regType: '3'
-                })
-                if (!sync.sync) {
-                    fullDeleteLegalObject.status = 'Ошибка legalObject'
-                    fullDeleteLegalObject.end = new Date()
-                    await fullDeleteLegalObject.save()
-                    return 'Ошибка legalObject'
+                if(legalObject.taxpayerType&&legalObject.sync) {
+                    sync = await registerTaxPayer({
+                        tpType: '1',
+                        inn: legalObject.inn,
+                        name: legalObject.name,
+                        ugns: '001',
+                        legalAddress: legalObject.address,
+                        responsiblePerson: legalObject.responsiblePerson,
+                        regType: '3'
+                    })
+                    if (!sync.sync) {
+                        fullDeleteLegalObject.status = 'Ошибка legalObject'
+                        fullDeleteLegalObject.end = new Date()
+                        await fullDeleteLegalObject.save()
+                        return 'Ошибка legalObject'
+                    }
                 }
                 await LegalObject.deleteMany({_id})
                 await CategoryLegalObject.deleteMany({legalObject: _id})

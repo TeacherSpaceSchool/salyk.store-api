@@ -4,7 +4,8 @@ const Cashbox = require('../models/cashbox');
 const LegalObject = require('../models/legalObject');
 const IntegrationObject = require('../models/integrationObject');
 const {psDDMMYYYYHHMM, pdDDMMYYYYHHMM} = require('./const');
-const {zReport} = require('../module/kkm');
+const {zReport} = require('./kkm');
+const {closeShift2} = require('./kkm-2.0');
 
 module.exports.getIntegrationReports = async ({legalObject, skip, date, type, cashbox, branch, workShift}) => {
     if(cashbox){
@@ -259,10 +260,15 @@ module.exports.putIntegrationReport = async ({cashbox, legalObject, type}) => {
                 report.end.setHours(report.end.getHours()+24)
             }
             report = await Report.create(report)
-
-            if((await LegalObject.findOne({ofd: true, _id: cashbox.legalObject}).select('ofd').lean())) {
-                if (report.sync)
-                    zReport(report._id)
+            if (workShift.syncMsg!=='Фискальный режим отключен') {
+                if (report.sync) {
+                    if(cashbox.fn) {
+                        let sync = await closeShift2(cashbox.fn)
+                        await Report.updateOne({_id: report._id}, {syncData: sync.syncData, sync: sync.sync, syncMsg: sync.syncMsg})
+                    }
+                    else
+                        zReport(report._id)
+                }
                 else
                     await Report.updateOne({_id: report._id}, {sync: false, syncMsg: 'Смена не синхронизирована'})
             } else

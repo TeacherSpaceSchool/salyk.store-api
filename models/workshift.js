@@ -110,6 +110,7 @@ const WorkShiftSchema = mongoose.Schema({
     },
     sync: Boolean,
     syncMsg: String,
+    syncData: String
 }, {
     timestamps: true
 });

@@ -23,6 +23,7 @@ const ReportSchema = mongoose.Schema({
     end: Date,
     sync: Boolean,
     syncMsg: String,
+    syncData: String,
     cashEnd: {
         type: Number,
         default: 0

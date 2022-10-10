@@ -7,6 +7,7 @@ const Report = require('../models/report');
 const District = require('../models/district');
 const {checkFloat, pdKKM, cashierMaxDay} = require('../module/const');
 const {openShift, zReport} = require('../module/kkm');
+const {openShift2, closeShift2} = require('../module/kkm-2.0');
 
 const type = `
   type WorkShift {
@@ -43,6 +44,7 @@ const type = `
     returnedBuyCount: Int
     sync: Boolean
     syncMsg: String
+    syncData: String
   }
 `;
 
@@ -105,7 +107,7 @@ const resolvers = {
                 ...filter&&filter==='active'?{end: null}:{},
              })
                 .skip(skip != undefined ? skip : 0)
-                .limit(skip != undefined ? 15 : 10000000000)
+                .limit(skip != undefined ? 30 : 10000000000)
                 .sort('-createdAt')
                 .sort('-end')
                 .populate({
@@ -211,15 +213,15 @@ const resolvers = {
                 })
                 .populate({
                     path: 'cashbox',
-                    select: 'name _id'
+                    select: '_id name rnmNumber fn registrationNumber'
                 })
                 .populate({
                     path: 'legalObject',
-                    select: 'name _id'
+                    select: '_id name inn rateTaxe taxSystem_v2'
                 })
                 .populate({
                     path: 'branch',
-                    select: 'name _id'
+                    select: '_id name address'
                 })
                 .lean()
         }
@@ -229,11 +231,21 @@ const resolvers = {
 const resolversMutation = {
     startWorkShift: async(parent, {cashbox}, {user}) => {
         if('кассир'===user.role&&user.branch) {
+            let start = new Date()
             let workShift = await WorkShift.findOne({legalObject: user.legalObject, cashier: user._id, end: null}).select('_id').lean()
-            cashbox = await Cashbox.findOne({presentCashier: null, _id: cashbox, legalObject: user.legalObject, branch: user.branch, endPayment: {$gte: new Date()}})
+            cashbox = await Cashbox.findOne({
+                presentCashier: null,
+                _id: cashbox,
+                legalObject: user.legalObject,
+                branch: user.branch,
+                endPayment: {$gte: new Date()},
+                $or: [
+                    {fnExpiresAt: null},
+                    {fnExpiresAt: {$gte: start}}
+                ]
+            })
             if(cashbox&&!workShift) {
                 let number = (await WorkShift.countDocuments({cashbox: cashbox._id}).lean())+1;
-                let start = new Date()
                 workShift = new WorkShift({
                     number,
                     legalObject: user.legalObject,
@@ -264,25 +276,26 @@ const resolversMutation = {
                     returnedBuyCount: 0,
                     start
                 });
-                if((await LegalObject.findOne({ofd: true, _id: user.legalObject}).select('ofd').lean())){
-                    if(!cashbox.rnmNumber) {
-                        workShift.sync = false
-                        workShift.syncMsg = 'Нет rnmNumber'
-                    }
-                }
-                else {
+
+                if(!(await LegalObject.findOne({ofd: true, _id: user.legalObject}).select('ofd').lean())) {
                     workShift.sync = true
                     workShift.syncMsg = 'Фискальный режим отключен'
                 }
                 workShift = await WorkShift.create(workShift)
-
-                if(!['Нет rnmNumber', 'Фискальный режим отключен'].includes(workShift.syncMsg)) {
-                    openShift({
-                        workShift: workShift._id,
-                        rnmNumber: cashbox.rnmNumber,
-                        number,
-                        date: pdKKM(start)
-                    })
+                if(workShift.syncMsg!=='Фискальный режим отключен') {
+                    if(cashbox.fn) {
+                        let sync = await openShift2(cashbox.fn)
+                        await WorkShift.updateOne({_id: workShift._id}, {syncData: sync.syncData, sync: sync.sync, syncMsg: sync.syncMsg})
+                    }
+                    else if(cashbox.rnmNumber)
+                        openShift({
+                            workShift: workShift._id,
+                            rnmNumber: cashbox.rnmNumber,
+                            number,
+                            date: pdKKM(start)
+                        })
+                    else
+                        await WorkShift.updateOne({_id: workShift._id}, {sync: false, syncMsg: 'Отсутсвуют данные для интеграции'})
                 }
 
                 cashbox.presentCashier = user._id
@@ -422,9 +435,15 @@ const resolversMutation = {
                 }
 
                 report = await Report.create(report)
-                if ((await LegalObject.findOne({ofd: true, _id: cashbox.legalObject}).select('ofd').lean())) {
-                    if (report.sync)
-                        zReport(report._id)
+                if (workShift.syncMsg!=='Фискальный режим отключен') {
+                    if (report.sync) {
+                        if(cashbox.fn) {
+                            let sync = await closeShift2(cashbox.fn)
+                            await Report.updateOne({_id: report._id}, {syncData: sync.syncData, sync: sync.sync, syncMsg: sync.syncMsg})
+                        }
+                        else
+                            zReport(report._id)
+                    }
                     else
                         await Report.updateOne({_id: report._id}, {sync: false, syncMsg: 'Смена не синхронизирована'})
                 } else

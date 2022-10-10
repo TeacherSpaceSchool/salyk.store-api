@@ -5,6 +5,7 @@ module.exports.pubsub = pubsub;
 const Blog = require('./blog');
 const Branch = require('./branch');
 const District = require('./district');
+const KKM20 = require('./kkm-2.0');
 const Cashbox = require('./cashbox');
 const Report = require('./report');
 const Category = require('./category');
@@ -69,6 +70,7 @@ const typeDefs = gql`
     ${Branch.type}
     ${District.type}
     ${Cashbox.type}
+    ${KKM20.type}
     ${Report.type}
     ${Category.type}
     ${Client.type}
@@ -103,6 +105,7 @@ const typeDefs = gql`
         ${Branch.mutation}
         ${District.mutation}
         ${Cashbox.mutation}
+        ${KKM20.mutation}
         ${Report.mutation}
         ${Category.mutation}
         ${Client.mutation}
@@ -132,6 +135,7 @@ const typeDefs = gql`
         ${District.query}
         ${FullDeleteLegalObject.query}
         ${Cashbox.query}
+        ${KKM20.query}
         ${Report.query}
         ${Category.query}
         ${Client.query}
@@ -188,6 +192,7 @@ const resolvers = {
         ...Branch.resolvers,
         ...District.resolvers,
         ...Cashbox.resolvers,
+        ...KKM20.resolvers,
         ...Report.resolvers,
         ...Category.resolvers,
         ...Client.resolvers,
@@ -225,6 +230,7 @@ const resolvers = {
         ...Branch.resolversMutation,
         ...District.resolversMutation,
         ...Cashbox.resolversMutation,
+        ...KKM20.resolversMutation,
         ...Report.resolversMutation,
         ...Category.resolversMutation,
         ...Client.resolversMutation,
