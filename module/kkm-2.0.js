@@ -5,8 +5,10 @@ const Cashbox = require('../models/cashbox');
 const axios = require('axios');
 const {receiptTypes} = require('./kkm-2.0-catalog');
 const production = (process.env.URL).trim()==='https://salyk.store'
-const url = production?'http://92.62.72.170:30115':'http://92.62.72.170:30115'
-const urlQR = production?'http://92.62.72.170:30105':'http://92.62.72.170:30105'
+const urlTest = 'http://92.62.72.170:30115'
+const url = 'http://92.62.72.170:30115'
+const urlQRTest = 'http://92.62.72.170:30105'
+const urlQR = 'http://92.62.72.170:30105'
 const QRCode = require('qrcode')
 const {pdDDMMYYHHMM, checkFloat} = require('../module/const');
 const CCRModel = production?'Salykstore':'CloudCR'
@@ -24,7 +26,7 @@ const authLogin = async (_id)=>{
     let now = new Date()
     try{
         let legalObject = await LegalObject.findById(_id)
-            .select('accessLogin accessPassword accessToken accessTokenTTL refreshToken refreshTokenTTL')
+            .select('name accessLogin accessPassword accessToken accessTokenTTL refreshToken refreshTokenTTL')
             .lean()
         let json = {
             login: legalObject.accessLogin,
@@ -33,9 +35,9 @@ const authLogin = async (_id)=>{
         let res, accessToken = legalObject.accessToken
         if(!legalObject.refreshTokenTTL||legalObject.refreshTokenTTL<now||legalObject.accessTokenTTL<now) {
             if (!legalObject.refreshTokenTTL||legalObject.refreshTokenTTL < now)
-                res = await axios.post(`${url}/api/v2/cash-register/auth/login`, json, {headers})
+                res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/v2/cash-register/auth/login`, json, {headers})
             else
-                res = await axios.post(`${url}/api/v2/cash-register/auth/refresh`, json, {headers: {
+                res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/v2/cash-register/auth/refresh`, json, {headers: {
                     ...headers,
                     'Refresh-Token': legalObject.refreshToken
                 }})
@@ -67,7 +69,7 @@ module.exports.authLogin = authLogin
 
 module.exports.getDataByInn = async (inn)=>{
     try{
-        let res = await axios.get(`${url}/api/info/preregister/${production?inn:testInn}`)
+        let res = await axios.get(`${!production?urlTest:url}/api/info/preregister/${production?inn:testInn}`)
         return res.data
     } catch (err) {
         console.error(err.response?err.response.data:err)
@@ -78,9 +80,9 @@ module.exports.getDataByInn = async (inn)=>{
 module.exports.reserveFn = async (legalObject)=>{
     try{
         legalObject = await LegalObject.findById(legalObject)
-            .select('inn')
+            .select('inn name')
             .lean()
-        let res = await axios.get(`${url}/api/service-api/fn/reserve/${production?legalObject.inn:testInn}`, {headers})
+        let res = await axios.get(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/fn/reserve/${production?legalObject.inn:testInn}`, {headers})
         return res.data.number?res.data:null
     } catch (err) {
         console.error(err.response?err.response.data:err)
@@ -91,9 +93,9 @@ module.exports.reserveFn = async (legalObject)=>{
 module.exports.getFnList = async (legalObject)=>{
     try{
         legalObject = await LegalObject.findById(legalObject)
-            .select('inn')
+            .select('inn name')
             .lean()
-        let res = await axios.get(`${url}/api/service-api/fn/list/${production?legalObject.inn:testInn}`, {headers})
+        let res = await axios.get(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/fn/list/${production?legalObject.inn:testInn}`, {headers})
         let fnList = [], _fnList = !res.data[0]?[]:res.data
         for(let i=0; i<_fnList.length; i++) {
             if(_fnList[i].status==='FREE')
@@ -109,9 +111,9 @@ module.exports.getFnList = async (legalObject)=>{
 module.exports.deleteFn = async (legalObject, fn)=>{
     try{
         legalObject = await LegalObject.findById(legalObject)
-            .select('inn')
+            .select('inn name')
             .lean()
-        let res = await axios.delete(`${url}/api/service-api/fn/free?tin=${production?legalObject.inn:testInn}&fn=${fn}`, {headers})
+        let res = await axios.delete(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/fn/free?tin=${production?legalObject.inn:testInn}&fn=${fn}`, {headers})
         return res.data===''
     } catch (err) {
         console.error(err.response?err.response.data:err)
@@ -151,7 +153,7 @@ module.exports.registerCashbox = async (branch, cashbox, fn)=>{
             businessActivity: branch.bType_v2===105?999:branch.bType_v2,
             taxAuthorityDepartment: branch.ugns_v2
         }
-        let res = await axios.post(`${url}/api/service-api/cash-register/registration`, json, {headers})
+        let res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration`, json, {headers})
         return JSON.stringify(res.data)
     } catch (err) {
         console.error(err.response?err.response.data:err)
@@ -191,7 +193,7 @@ module.exports.reregisterCashbox = async (cashbox)=>{
             businessActivity: branch.bType_v2===105?999:branch.bType_v2,
             taxAuthorityDepartment: branch.ugns_v2
         }
-        let res = await axios.put(`${url}/api/service-api/cash-register/registration`, json, {headers})
+        let res = await axios.put(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration`, json, {headers})
         await Cashbox.updateOne({_id: cashbox._id}, {
             $push: {syncData: ['reregisterCashbox', JSON.stringify({date: new Date(), ...res.data})]},
             sync: !!res.data.operatorResponse,
@@ -212,7 +214,14 @@ module.exports.reregisterCashbox = async (cashbox)=>{
 
 module.exports.deleteCashbox = async (cashbox, fn)=>{
     try{
-        let res = await axios.delete(`${url}/api/service-api/cash-register/registration?fn=${fn}&uuid=${cashbox.toString()}`, {headers})
+        cashbox = await Cashbox.findById(cashbox)
+            .select('_id legalObject')
+            .populate({
+                path: 'legalObject',
+                select: 'name'
+            })
+            .lean()
+        let res = await axios.delete(`${!production||cashbox.legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration?fn=${fn}&uuid=${cashbox.toString()}`, {headers})
         await Cashbox.updateOne({_id: cashbox._id}, {
             $push: {syncData: ['deleteCashbox', JSON.stringify({date: new Date(), ...res.data})]},
             sync: !!res.data.operatorResponse,
@@ -222,7 +231,7 @@ module.exports.deleteCashbox = async (cashbox, fn)=>{
         return !!res.data.fnNumber
     } catch (err) {
         console.error(err.response?err.response.data:err)
-        await Cashbox.updateOne({_id: cashbox._id}, {
+        await Cashbox.updateOne({_id: cashbox}, {
             sync: false,
             syncMsg: JSON.stringify(err.response?err.response.data:err),
             syncType: 'deleteCashbox'
@@ -231,9 +240,12 @@ module.exports.deleteCashbox = async (cashbox, fn)=>{
     }
 };
 
-module.exports.getCashboxState = async (fn)=>{
+module.exports.getCashboxState = async (fn, legalObject)=>{
     try{
-        let res = await axios.get(`${url}/api/service-api/cash-register/state/${fn}`, {headers})
+        legalObject = await LegalObject.findById(legalObject)
+            .select('name')
+            .lean()
+        let res = await axios.get(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/state/${fn}`, {headers})
         return res.data.fiscalMemoryNumber?res.data:null
     } catch (err) {
         console.error(err.response?err.response.data:err)
@@ -241,11 +253,14 @@ module.exports.getCashboxState = async (fn)=>{
     }
 };
 
-module.exports.openShift2 = async (fn)=>{
+module.exports.openShift2 = async (fn, legalObject)=>{
     try{
-        let res = await axios.post(`${url}/api/service-api/cash-register/shift/open`, {fnNumber: fn}, {headers})
+        legalObject = await LegalObject.findById(legalObject)
+            .select('name')
+            .lean()
+        let res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/shift/open`, {fnNumber: fn}, {headers})
         return {
-            sync: !!res.data.operatorResponse,
+            sync: !!(res.data.fields&&res.data.operatorResponse&&!res.data.operatorResponse.fields[1210]),
             syncMsg: JSON.stringify(res.data),
             syncData: JSON.stringify(res.data)
         }
@@ -258,11 +273,14 @@ module.exports.openShift2 = async (fn)=>{
     }
 };
 
-module.exports.closeShift2 = async (fn)=>{
+module.exports.closeShift2 = async (fn, legalObject)=>{
     try{
-        let res = await axios.post(`${url}/api/service-api/cash-register/shift/close`, {fnNumber: fn}, {headers})
+        legalObject = await LegalObject.findById(legalObject)
+            .select('name')
+            .lean()
+        let res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/shift/close`, {fnNumber: fn}, {headers})
         return {
-            sync: !!res.data.operatorResponse,
+            sync: !!(res.data.fields&&res.data.operatorResponse&&!res.data.operatorResponse.fields[1210]),
             syncMsg: JSON.stringify(res.data),
             syncData: JSON.stringify(res.data)
         }
@@ -288,7 +306,7 @@ module.exports.sendReceipt = async (sale)=>{
             })
             .populate({
                 path: 'legalObject',
-                select: 'taxSystem_v2 inn'
+                select: 'taxSystem_v2 inn ndsType_v2 nspType_v2 name'
             })
         let json = {
             uuid: sale._id.toString(),
@@ -296,10 +314,12 @@ module.exports.sendReceipt = async (sale)=>{
             goods: [],
             taxSums: [
                 {
+                    code: sale.legalObject.nspType_v2,
                     sum: sale.nsp,
                     type:  'ST'
                 },
                 {
+                    code: sale.legalObject.ndsType_v2,
                     sum: sale.nds,
                     type: 'VAT'
                 }
@@ -310,7 +330,6 @@ module.exports.sendReceipt = async (sale)=>{
             totalSum: sale.amountEnd,
             operation:  receiptTypes[sale.type]
         }
-
         for(let i=0; i<sale.items.length; i++) {
             json.goods.push({
                     calcItemAttributeCode: sale.branch.calcItemAttribute,
@@ -318,21 +337,21 @@ module.exports.sendReceipt = async (sale)=>{
                     name: sale.items[i].name,
                     price: checkFloat(sale.items[i].amountEnd/sale.items[i].count),
                     quantity: sale.items[i].count,
-                    st: checkFloat(sale.items[i].nsp),
-                    vat: checkFloat(sale.items[i].nds)
+                    st: sale.legalObject.nspType_v2,
+                    vat: sale.legalObject.ndsType_v2
                 })
         }
-        let res = await axios.post(`${url}/api/service-api/cash-register/receipt`, json, {headers})
+        let res = await axios.post(`${!production||sale.legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/receipt`, json, {headers})
         let qr
         if(res.data.fields) {
             let date = res.data.fields[1012].replace('KGT ', '')
             date = new Date(date)
             date = `${date.getFullYear()}${date.getMonth()<9?'0':''}${date.getMonth()+1}${date.getDate()<10?'0':''}${date.getDate()}T${date.getHours()<10?'0':''}${date.getHours()}${date.getMinutes()<10?'0':''}${date.getMinutes()}${date.getSeconds()<10?'0':''}${date.getSeconds()}`
-            qr = `${urlQR}/tax-web-control/client/api/v1/ticket?date=${date}&type=3&operation_type=${res.data.fields[1054]}&fn_number=${res.data.fields[1041]}&fd_number=${res.data.fields[1040]}&fm=${parseInt(res.data.fields[1077], 16)}&tin=${sale.legalObject.inn}&regNumber=${res.data.fields[1037]}&sum=${res.data.fields[1020]}`
+            qr = `${!production||sale.legalObject.name==='Test113 ОсОО Архикойн'?urlQRTest:urlQR}/tax-web-control/client/api/v1/ticket?date=${date}&type=3&operation_type=${res.data.fields[1054]}&fn_number=${res.data.fields[1041]}&fd_number=${res.data.fields[1040]}&fm=${parseInt(res.data.fields[1077], 16)}&tin=${sale.legalObject.inn}&regNumber=${res.data.fields[1037]}&sum=${res.data.fields[1020]}`
             qr = await QRCode.toDataURL(qr)
         }
         return {
-            sync: !!(res.data.operatorResponse&&res.data.fields),
+            sync: !!(res.data.fields&&res.data.operatorResponse&&!res.data.operatorResponse.fields[1210]),
             syncMsg: JSON.stringify(res.data),
             qr,
             syncData: JSON.stringify(res.data)

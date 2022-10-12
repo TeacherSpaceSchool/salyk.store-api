@@ -233,7 +233,7 @@ const resolversMutation = {
         return 'ERROR'
     },
     deleteBranch: async(parent, { _id }, {user}) => {
-        if(['admin', 'superadmin'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())) {
+        if(['admin', 'superadmin'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())&&!(await Cashbox.findOne({branch: _id}).select('_id').lean())) {
             let object = await Branch.findOne({_id})
             object.del = true
             await object.save();

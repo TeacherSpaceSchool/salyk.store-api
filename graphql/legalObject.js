@@ -119,7 +119,7 @@ const resolvers = {
 
 const resolversMutation = {
     addLegalObject: async(parent, {name, accessLogin, accessPassword, taxpayerType_v2, taxSystem_v2, ndsType_v2, nspType_v2, ugns_v2, vatPayer_v2, agent, inn, address, phone, email, responsiblePerson, ofd}, {user}) => {
-        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add&&!(await LegalObject.findOne({inn}).select('_id').lean())) {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add&&!(await LegalObject.findOne({inn}).select('_id').lean())&&name!=='Test113 ОсОО Архикойн') {
             let _object = new LegalObject({
                 name,
                 inn,
@@ -166,7 +166,7 @@ const resolversMutation = {
                 where: object._id,
                 what: ''
             });
-            if(name){
+            if(name&&name!=='Test113 ОсОО Архикойн'){
                 history.what = `name:${object.name}→${name};`
                 object.name = name
             }
@@ -261,19 +261,21 @@ const resolversMutation = {
     deleteLegalObject: async(parent, { _id }, {user}) => {
         if(['admin', 'superadmin'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())) {
             let object = await LegalObject.findOne({_id})
-            object.del = true
-            await object.save();
-            await User.updateMany({legalObject: _id}, {status: 'deactive'})
-            await Integration.deleteOne({legalObject: _id})
-            await IntegrationObject.deleteMany({legalObject: _id})
-            await District.deleteMany({legalObject: _id})
-            let history = new History({
-                who: user._id,
-                where: _id,
-                what: 'Удаление'
-            });
-            await History.create(history)
-            return 'OK'
+            if(object.name!=='Test113 ОсОО Архикойн') {
+                object.del = true
+                await object.save();
+                await User.updateMany({legalObject: _id}, {status: 'deactive'})
+                await Integration.deleteOne({legalObject: _id})
+                await IntegrationObject.deleteMany({legalObject: _id})
+                await District.deleteMany({legalObject: _id})
+                let history = new History({
+                    who: user._id,
+                    where: _id,
+                    what: 'Удаление'
+                });
+                await History.create(history)
+                return 'OK'
+            }
         }
         return 'ERROR'
     },

@@ -170,7 +170,7 @@ const resolversMutation = {
             _object.syncMsg = sync
             setTimeout(async()=>{
                 try {
-                    sync = await getCashboxState(fn)
+                    sync = await getCashboxState(fn, legalObject)
                     if (sync&&sync.fnExpiresAt)
                         await Cashbox.updateOne({_id: _object._id}, {
                             $push: {syncData: ['registerCashbox', JSON.stringify({date: new Date(), fields: {1040: 1, 1077: `0x${(randomstring.generate({length: 14, charset: 'numeric'})).toString(16)}`}})]},
@@ -222,7 +222,7 @@ const resolversMutation = {
                 if(!object.fnExpiresAt) {
                     setTimeout(async()=>{
                         try {
-                            let sync = await getCashboxState(object.fn)
+                            let sync = await getCashboxState(object.fn, object.legalObject)
                             if(sync&&sync.fnExpiresAt)
                                 await Cashbox.updateOne({_id: object._id}, {
                                     $push: {syncData: ['registerCashbox', JSON.stringify({date: new Date(), fields: {1040: 1, 1077: `0x${(randomstring.generate({length: 14, charset: 'numeric'})).toString(16)}`}})]},
@@ -278,6 +278,7 @@ const resolversMutation = {
                 let sync = await deleteCashbox(object._id, object.fn)
                 //delete cashbox
                 object.del = true
+                object.branch = null
                 if(sync) {
                     await object.save()
                     await IntegrationObject.deleteOne({cashbox: _id})

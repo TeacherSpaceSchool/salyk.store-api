@@ -6,8 +6,8 @@ const WithdrawHistory = require('../models/withdrawHistory');
 const Report = require('../models/report');
 const District = require('../models/district');
 const {checkFloat, pdKKM, cashierMaxDay} = require('../module/const');
-const {openShift, zReport} = require('../module/kkm');
-const {openShift2, closeShift2} = require('../module/kkm-2.0');
+const {openShift} = require('../module/kkm');
+const {openShift2} = require('../module/kkm-2.0');
 
 const type = `
   type WorkShift {
@@ -228,6 +228,88 @@ const resolvers = {
     },
 };
 
+const endWorkShift = async ({_id, user}) => {
+    if(['кассир', 'управляющий', 'superadmin', 'супервайзер', 'admin'].includes(user.role)) {
+        let workShift = await WorkShift.findOne({
+            ...user.role === 'кассир' ? {branch: user.branch, cashier: user._id} : {_id},
+            ...user.legalObject ? {legalObject: user.legalObject} : {},
+            end: null
+        })
+        let cashbox = await Cashbox.findOne({_id: workShift.cashbox})
+        if (workShift && cashbox) {
+            workShift.end = new Date()
+            cashbox.presentCashier = null
+            await cashbox.save()
+            await workShift.save();
+            let number = (await Report.countDocuments({cashbox: cashbox._id, type: 'Z'}).lean()) + 1;
+            let report = new Report({
+                number,
+                branch: workShift.branch,
+                legalObject: cashbox.legalObject,
+                cashbox: cashbox._id,
+                workShift: workShift._id,
+                type: 'Z',
+                cashEnd: cashbox.cash,
+                deposit: workShift.deposit,
+                withdraw: workShift.withdraw,
+                discount: workShift.discount,
+                extra: workShift.extra,
+                cash: workShift.cash,
+                cashless: workShift.cashless,
+                saleAll: cashbox.sale,
+                consignationAll: cashbox.consignation,
+                paidConsignationAll: cashbox.paidConsignation,
+                prepaymentAll: cashbox.prepayment,
+                returnedAll: cashbox.returned,
+                buyAll: cashbox.buy,
+                returnedBuyAll: cashbox.returnedBuy,
+                sale: workShift.sale,
+                saleCount: workShift.saleCount,
+                consignation: workShift.consignation,
+                consignationCount: workShift.consignationCount,
+                paidConsignation: workShift.paidConsignation,
+                paidConsignationCount: workShift.paidConsignationCount,
+                prepayment: workShift.prepayment,
+                prepaymentCount: workShift.prepaymentCount,
+                returned: workShift.returned,
+                returnedCount: workShift.returnedCount,
+                buy: workShift.buy,
+                buyCount: workShift.buyCount,
+                returnedBuy: workShift.returnedBuy,
+                returnedBuyCount: workShift.returnedBuyCount,
+                start: workShift.start,
+                sync: workShift.sync
+            });
+
+            report.end = new Date()
+            if (((report.end - report.start) / 1000 / 60 / 60) > 24) {
+                report.end = new Date(report.start)
+                report.end.setHours(report.end.getHours() + 24)
+            }
+
+            report = await Report.create(report)
+            if (workShift.syncMsg!=='Фискальный режим отключен') {
+                if (report.sync) {
+                    if(cashbox.fn) {
+                        const {closeShift2} = require('../module/kkm-2.0');
+                        let sync = await closeShift2(cashbox.fn, cashbox.legalObject)
+                        await Report.updateOne({_id: report._id}, {syncData: sync.syncData, sync: sync.sync, syncMsg: sync.syncMsg})
+                    }
+                    else {
+                        const {zReport} = require('../module/kkm');
+                        zReport(report._id)
+                    }
+                }
+                else
+                    await Report.updateOne({_id: report._id}, {sync: false, syncMsg: 'Смена не синхронизирована'})
+            } else
+                await Report.updateOne({_id: report._id}, {sync: true, syncMsg: 'Фискальный режим отключен'})
+
+            return report._id
+        }
+    }
+}
+
 const resolversMutation = {
     startWorkShift: async(parent, {cashbox}, {user}) => {
         if('кассир'===user.role&&user.branch) {
@@ -284,7 +366,7 @@ const resolversMutation = {
                 workShift = await WorkShift.create(workShift)
                 if(workShift.syncMsg!=='Фискальный режим отключен') {
                     if(cashbox.fn) {
-                        let sync = await openShift2(cashbox.fn)
+                        let sync = await openShift2(cashbox.fn, cashbox.legalObject)
                         await WorkShift.updateOne({_id: workShift._id}, {syncData: sync.syncData, sync: sync.sync, syncMsg: sync.syncMsg})
                     }
                     else if(cashbox.rnmNumber)
@@ -376,85 +458,11 @@ const resolversMutation = {
         return 'ERROR'
     },
     endWorkShift: async(parent, {_id}, {user}) => {
-        if(['кассир', 'управляющий', 'superadmin', 'супервайзер', 'admin'].includes(user.role)) {
-            let workShift = await WorkShift.findOne({
-                ...user.role === 'кассир' ? {branch: user.branch, cashier: user._id} : {_id},
-                ...user.legalObject ? {legalObject: user.legalObject} : {},
-                end: null
-            })
-            let cashbox = await Cashbox.findOne({_id: workShift.cashbox})
-            if (workShift && cashbox) {
-                workShift.end = new Date()
-                cashbox.presentCashier = null
-                await cashbox.save()
-                await workShift.save();
-                let number = (await Report.countDocuments({cashbox: cashbox._id, type: 'Z'}).lean()) + 1;
-                let report = new Report({
-                    number,
-                    branch: workShift.branch,
-                    legalObject: cashbox.legalObject,
-                    cashbox: cashbox._id,
-                    workShift: workShift._id,
-                    type: 'Z',
-                    cashEnd: cashbox.cash,
-                    deposit: workShift.deposit,
-                    withdraw: workShift.withdraw,
-                    discount: workShift.discount,
-                    extra: workShift.extra,
-                    cash: workShift.cash,
-                    cashless: workShift.cashless,
-                    saleAll: cashbox.sale,
-                    consignationAll: cashbox.consignation,
-                    paidConsignationAll: cashbox.paidConsignation,
-                    prepaymentAll: cashbox.prepayment,
-                    returnedAll: cashbox.returned,
-                    buyAll: cashbox.buy,
-                    returnedBuyAll: cashbox.returnedBuy,
-                    sale: workShift.sale,
-                    saleCount: workShift.saleCount,
-                    consignation: workShift.consignation,
-                    consignationCount: workShift.consignationCount,
-                    paidConsignation: workShift.paidConsignation,
-                    paidConsignationCount: workShift.paidConsignationCount,
-                    prepayment: workShift.prepayment,
-                    prepaymentCount: workShift.prepaymentCount,
-                    returned: workShift.returned,
-                    returnedCount: workShift.returnedCount,
-                    buy: workShift.buy,
-                    buyCount: workShift.buyCount,
-                    returnedBuy: workShift.returnedBuy,
-                    returnedBuyCount: workShift.returnedBuyCount,
-                    start: workShift.start,
-                    sync: workShift.sync
-                });
-
-                report.end = new Date()
-                if (((report.end - report.start) / 1000 / 60 / 60) > 24) {
-                    report.end = new Date(report.start)
-                    report.end.setHours(report.end.getHours() + 24)
-                }
-
-                report = await Report.create(report)
-                if (workShift.syncMsg!=='Фискальный режим отключен') {
-                    if (report.sync) {
-                        if(cashbox.fn) {
-                            let sync = await closeShift2(cashbox.fn)
-                            await Report.updateOne({_id: report._id}, {syncData: sync.syncData, sync: sync.sync, syncMsg: sync.syncMsg})
-                        }
-                        else
-                            zReport(report._id)
-                    }
-                    else
-                        await Report.updateOne({_id: report._id}, {sync: false, syncMsg: 'Смена не синхронизирована'})
-                } else
-                    await Report.updateOne({_id: report._id}, {sync: true, syncMsg: 'Фискальный режим отключен'})
-
-                return report._id
-            }
-        }
+        return await endWorkShift({_id, user})
     }
 };
 
+module.exports.endWorkShift = endWorkShift;
 module.exports.resolversMutation = resolversMutation;
 module.exports.mutation = mutation;
 module.exports.type = type;

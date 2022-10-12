@@ -2,13 +2,13 @@ const { isMainThread } = require('worker_threads');
 const connectDB = require('../models/index');
 const cron = require('node-cron');
 const SyncKKM = require('../models/syncKKM');
-const Cashbox = require('../models/cashbox');
 const WorkShift = require('../models/workshift');
 const Sale = require('../models/sale');
 const Report = require('../models/report');
-const {registerKkm, openShift, check, zReport} = require('../module/kkm');
+const {openShift, check, zReport} = require('../module/kkm');
 const {pdKKM} = require('../module/const');
-const {sendReceipt, openShift2, closeShift2, registerCashbox, reregisterCashbox, deleteCashbox, getCashboxState} = require('../module/kkm-2.0');
+const {endWorkShift} = require('../graphql/workshift');
+const {sendReceipt, openShift2, closeShift2} = require('../module/kkm-2.0');
 
 connectDB.connect();
 if(!isMainThread) {
@@ -16,7 +16,7 @@ if(!isMainThread) {
         if(!(await SyncKKM.findOne({end: null}).select('_id').lean())){
             let date = new Date()
             let sync
-            if(date.getDay()===0) {
+            if(date.getDay()===0&&date.getHours()===3) {
                 date.setDate(date.getDate() - 7)
                 await SyncKKM.deleteMany({dateStart: {$lte: date}})
             }
@@ -27,77 +27,29 @@ if(!isMainThread) {
                 reports: 0
             });
             syncKKM = await SyncKKM.create(syncKKM)
+
+            date = new Date()
+            if(date.getHours()===3) {
+                date.setDate(date.getDate() - 1)
+                date.setMinutes(date.getMinutes() - 10)
+                let expiredWorkShifts = await WorkShift.find({createdAt: {$lte: date}, end: null}).select('_id').lean()
+                for(let i=0; i<expiredWorkShifts.length; i++) {
+                    await endWorkShift({_id: expiredWorkShifts[i]._id, user: {role: 'superadmin'}})
+                }
+            }
+
             let dateEnd = new Date()
             dateEnd.setMinutes(dateEnd.getMinutes()-10)
             let dateStart = new Date()
             dateStart.setMonth(11)
             dateStart.setDate(1)
             dateStart.setYear(2021)
-            let cashboxes = await Cashbox.find({
-                sync: {$ne: true},
-                $and: [{createdAt: {$gt: dateStart}}, {createdAt: {$lte: dateEnd}}]
-            })
-                .populate({
-                    path: 'branch',
-                    select: 'uniqueId'
-                })
-            if((process.env.URL).trim()==='http://localhost')
-                console.log('cashboxes', cashboxes.length)
-            syncKKM.cashboxes = cashboxes.length
-            for(let i=0; i<cashboxes.length; i++){
-                if(cashboxes[i].fn) {
-                    if(cashboxes[i].syncType==='registerCashbox') {
-                        let sync = await registerCashbox(cashboxes[i].branch, cashboxes[i]._id, cashboxes[i].fn)
-                        cashboxes[i].syncMsg = sync
-                        if(sync.sync) {
-                            setTimeout(async()=>{
-                                try {
-                                    let sync = await getCashboxState(cashboxes[i].fn)
-                                    if(sync&&sync.fnExpiresAt)
-                                        await Cashbox.updateOne({_id: cashboxes[i]._id}, {
-                                            sync: true,
-                                            fnExpiresAt: new Date(sync.fnExpiresAt),
-                                            registrationNumber: sync.registrationNumber
-                                        })
-                                } catch (err) {
-                                    console.error('setTimeout')
-                                }
-                            }, 30000)
-                        }
-                    }
-                    else if(cashboxes[i].syncType==='reregisterCashbox')
-                        await reregisterCashbox(cashboxes[i])
-                    else if(cashboxes[i].syncType==='deleteCashbox')
-                        await deleteCashbox(cashboxes[i]._id, cashboxes[i].fn)
-                }
-                else if(cashboxes[i].rnmNumber) {
-                    if (cashboxes[i].branch.uniqueId) {
-                        let sync = await registerKkm({
-                            spId: cashboxes[i].branch.uniqueId,
-                            name: cashboxes[i].name,
-                            number: cashboxes[i]._id.toString(),
-                            regType: cashboxes[i].del ? '3' : !cashboxes[i].rnmNumber ? '1' : '2',
-                            rnmNumber: cashboxes[i].rnmNumber
-                        })
-                        cashboxes[i].sync = sync.sync
-                        cashboxes[i].syncMsg = sync.syncMsg
-                        if (sync.rnmNumber && !cashboxes[i].rnmNumber) cashboxes[i].rnmNumber = sync.rnmNumber
-                    }
-                    else {
-                        cashboxes[i].sync = false
-                        cashboxes[i].syncMsg = 'Нет uniqueId'
-                    }
-                }
-                await cashboxes[i].save()
-                if((process.env.URL).trim()==='http://localhost')
-                    console.log('cashbox', i+1)
-            }
             let workShifts = await WorkShift.find({
                 sync: {$ne: true},
                 syncMsg: {$ne: 'Фискальный режим отключен'},
                 $and: [{createdAt: {$gt: dateStart}}, {createdAt: {$lte: dateEnd}}]
             })
-                .select('_id cashbox number start')
+                .select('_id cashbox number start legalObject')
                 .populate({
                     path: 'cashbox',
                     select: 'rnmNumber fn'
@@ -108,7 +60,7 @@ if(!isMainThread) {
             syncKKM.workShifts = workShifts.length
             for(let i=0; i<workShifts.length; i++){
                 if(workShifts[i].cashbox.fn) {
-                    sync = await openShift2(workShifts[i].cashbox.fn)
+                    sync = await openShift2(workShifts[i].cashbox.fn, workShifts[i].legalObject)
                     await WorkShift.updateOne({_id: workShifts[i]._id}, {syncData: sync.syncData, sync: sync.sync, syncMsg: sync.syncMsg})
                 }
                 else {
@@ -151,7 +103,7 @@ if(!isMainThread) {
                 type: 'Z',
                 $and: [{createdAt: {$gt: dateStart}}, {createdAt: {$lte: dateEnd}}]
             })
-                .select('_id workShift cashbox')
+                .select('_id workShift cashbox legalObject')
                 .populate({
                     path: 'cashbox',
                     select: 'rnmNumber fn'
@@ -167,7 +119,7 @@ if(!isMainThread) {
             for(let i=0; i<reports.length; i++){
                 if (reports[i].workShift.sync) {
                     if(reports[i].cashbox.fn) {
-                        let sync = await closeShift2(reports[i].cashbox.fn)
+                        let sync = await closeShift2(reports[i].cashbox.fn, reports[i].legalObject)
                         await Report.updateOne({_id: reports[i]._id}, {syncData: sync.syncData, sync: sync.sync, syncMsg: sync.syncMsg})
                     }
                     else
