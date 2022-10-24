@@ -239,7 +239,6 @@ module.exports.deleteCashbox = async (cashbox, fn)=>{
         })
         return !!res.data.fnNumber
     } catch (err) {
-        console.log('error')
         console.error(err.response?err.response.data:err)
         await Cashbox.updateOne({_id: cashbox}, {
             sync: false,
