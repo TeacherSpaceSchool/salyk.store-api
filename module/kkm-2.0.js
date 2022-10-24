@@ -4,22 +4,24 @@ const Sale = require('../models/sale');
 const Cashbox = require('../models/cashbox');
 const axios = require('axios');
 const {receiptTypes} = require('./kkm-2.0-catalog');
-const production = (process.env.URL).trim()==='https://salyk.store'
+const production = process.env.URL.trim()==='https://salyk.store'
 const urlTest = 'http://92.62.72.170:30115'
 const url = 'http://92.62.72.170:30115'
 const urlQRTest = 'http://92.62.72.170:30105'
 const urlQR = 'http://92.62.72.170:30105'
 const QRCode = require('qrcode')
 const {pdDDMMYYHHMM, checkFloat} = require('../module/const');
-const CCRModel = production?'Salykstore':'CloudCR'
-const CCRVersion = production?'1.0':'1'
-const ApiKey = production?'':'Cur messor velum?'
-const testInn = '00103201810134'
 const headers = {
     'Content-Type': 'application/json',
-    'CCRModel': CCRModel,
-    'CCRVersion': CCRVersion,
-    'Api-Key': ApiKey
+    'CCRModel': 'CloudCR',
+    'CCRVersion': '1',
+    'Api-Key': 'Cur messor velum?'
+}
+const headersTest = {
+    'Content-Type': 'application/json',
+    'CCRModel': 'CloudCR',
+    'CCRVersion': '1',
+    'Api-Key': 'Cur messor velum?'
 }
 
 const authLogin = async (_id)=>{
@@ -35,10 +37,11 @@ const authLogin = async (_id)=>{
         let res, accessToken = legalObject.accessToken
         if(!legalObject.refreshTokenTTL||legalObject.refreshTokenTTL<now||legalObject.accessTokenTTL<now) {
             if (!legalObject.refreshTokenTTL||legalObject.refreshTokenTTL < now)
-                res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/v2/cash-register/auth/login`, json, {headers})
+                res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/v2/cash-register/auth/login`, json,
+                    {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
             else
                 res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/v2/cash-register/auth/refresh`, json, {headers: {
-                    ...headers,
+                    ...!production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers,
                     'Refresh-Token': legalObject.refreshToken
                 }})
             await LegalObject.updateOne({_id}, {
@@ -82,7 +85,8 @@ module.exports.reserveFn = async (legalObject)=>{
         legalObject = await LegalObject.findById(legalObject)
             .select('inn name')
             .lean()
-        let res = await axios.get(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/fn/reserve/${production?legalObject.inn:testInn}`, {headers})
+        let res = await axios.get(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/fn/reserve/${legalObject.inn}`,
+            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
         return res.data.number?res.data:null
     } catch (err) {
         console.error(err.response?err.response.data:err)
@@ -95,7 +99,8 @@ module.exports.getFnList = async (legalObject)=>{
         legalObject = await LegalObject.findById(legalObject)
             .select('inn name')
             .lean()
-        let res = await axios.get(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/fn/list/${production?legalObject.inn:testInn}`, {headers})
+        let res = await axios.get(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/fn/list/${legalObject.inn}`,
+            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
         let fnList = [], _fnList = !res.data[0]?[]:res.data
         for(let i=0; i<_fnList.length; i++) {
             if(_fnList[i].status==='FREE')
@@ -113,7 +118,8 @@ module.exports.deleteFn = async (legalObject, fn)=>{
         legalObject = await LegalObject.findById(legalObject)
             .select('inn name')
             .lean()
-        let res = await axios.delete(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/fn/free?tin=${production?legalObject.inn:testInn}&fn=${fn}`, {headers})
+        let res = await axios.delete(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/fn/free?tin=${legalObject.inn}&fn=${fn}`,
+            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
         return res.data===''
     } catch (err) {
         console.error(err.response?err.response.data:err)
@@ -153,7 +159,8 @@ module.exports.registerCashbox = async (branch, cashbox, fn)=>{
             businessActivity: branch.bType_v2===105?999:branch.bType_v2,
             taxAuthorityDepartment: branch.ugns_v2
         }
-        let res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration`, json, {headers})
+        let res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration`, json,
+            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
         return JSON.stringify(res.data)
     } catch (err) {
         console.error(err.response?err.response.data:err)
@@ -193,7 +200,8 @@ module.exports.reregisterCashbox = async (cashbox)=>{
             businessActivity: branch.bType_v2===105?999:branch.bType_v2,
             taxAuthorityDepartment: branch.ugns_v2
         }
-        let res = await axios.put(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration`, json, {headers})
+        let res = await axios.put(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration`, json,
+            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
         await Cashbox.updateOne({_id: cashbox._id}, {
             $push: {syncData: ['reregisterCashbox', JSON.stringify({date: new Date(), ...res.data})]},
             sync: !!res.data.operatorResponse,
@@ -221,7 +229,8 @@ module.exports.deleteCashbox = async (cashbox, fn)=>{
                 select: 'name'
             })
             .lean()
-        let res = await axios.delete(`${!production||cashbox.legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration?fn=${fn}&uuid=${cashbox._id.toString()}`, {headers})
+        let res = await axios.delete(`${!production||cashbox.legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration?fn=${fn}&uuid=${cashbox._id.toString()}`,
+            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
         await Cashbox.updateOne({_id: cashbox._id}, {
             $push: {syncData: ['deleteCashbox', JSON.stringify({date: new Date(), ...res.data})]},
             sync: !!res.data.operatorResponse,
@@ -246,7 +255,8 @@ module.exports.getCashboxState = async (fn, legalObject)=>{
         legalObject = await LegalObject.findById(legalObject)
             .select('name')
             .lean()
-        let res = await axios.get(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/state/${fn}`, {headers})
+        let res = await axios.get(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/state/${fn}`,
+            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
         return res.data.fiscalMemoryNumber?res.data:null
     } catch (err) {
         console.error(err.response?err.response.data:err)
@@ -259,7 +269,8 @@ module.exports.openShift2 = async (fn, legalObject)=>{
         legalObject = await LegalObject.findById(legalObject)
             .select('name')
             .lean()
-        let res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/shift/open`, {fnNumber: fn}, {headers})
+        let res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/shift/open`, {fnNumber: fn},
+            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
         return {
             sync: !!(res.data.fields&&res.data.operatorResponse&&!res.data.operatorResponse.fields[1210]),
             syncMsg: JSON.stringify(res.data),
@@ -279,7 +290,8 @@ module.exports.closeShift2 = async (fn, legalObject)=>{
         legalObject = await LegalObject.findById(legalObject)
             .select('name')
             .lean()
-        let res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/shift/close`, {fnNumber: fn}, {headers})
+        let res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/shift/close`, {fnNumber: fn},
+            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
         return {
             sync: !!(res.data.fields&&res.data.operatorResponse&&!res.data.operatorResponse.fields[1210]),
             syncMsg: JSON.stringify(res.data),
@@ -342,7 +354,8 @@ module.exports.sendReceipt = async (sale)=>{
                     vat: sale.legalObject.ndsType_v2
                 })
         }
-        let res = await axios.post(`${!production||sale.legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/receipt`, json, {headers})
+        let res = await axios.post(`${!production||sale.legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/receipt`, json,
+            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
         let qr
         if(res.data.fields) {
             let date = res.data.fields[1012].replace('KGT ', '')
