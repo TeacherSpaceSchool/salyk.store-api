@@ -72,7 +72,7 @@ module.exports.authLogin = authLogin
 
 module.exports.getDataByInn = async (inn)=>{
     try{
-        let res = await axios.get(`${!production?urlTest:url}/api/info/preregister/${production?inn:testInn}`)
+        let res = await axios.get(`${!production?urlTest:url}/api/info/preregister/${inn}`)
         return res.data
     } catch (err) {
         console.error(err.response?err.response.data:err)
@@ -354,7 +354,7 @@ module.exports.sendReceipt = async (sale)=>{
                 })
         }
         let res = await axios.post(`${!production||sale.legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/receipt`, json,
-            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
+            {headers: !production||sale.legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
         let qr
         if(res.data.fields) {
             let date = res.data.fields[1012].replace('KGT ', '')
