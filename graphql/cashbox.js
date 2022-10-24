@@ -27,8 +27,9 @@ const type = `
 `;
 
 const query = `
-    cashboxes(skip: Int, search: String, legalObject: ID, branch: ID, filter: String, all: Boolean, del: Boolean): [Cashbox]
-    cashboxesCount(search: String, legalObject: ID, branch: ID, filter: String, del: Boolean): Int
+    cashboxes(skip: Int, search: String, legalObject: ID, branch: ID, filter: String, all: Boolean): [Cashbox]
+    cashboxesCount(search: String, legalObject: ID, branch: ID, filter: String): Int
+    cashboxesTrash(skip: Int, search: String): [Cashbox]
     cashbox(_id: ID!): Cashbox
 `;
 
@@ -41,7 +42,7 @@ const mutation = `
 `;
 
 const resolvers = {
-    cashboxes: async(parent, {skip, search, legalObject, branch, filter, all, del}, {user}) => {
+    cashboxes: async(parent, {skip, search, legalObject, branch, filter, all}, {user}) => {
         if(['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер'].includes(user.role)||(search&&search.length>2||all)&&user.role==='оператор') {
             if(user.legalObject) legalObject = user.legalObject
             let districts = []
@@ -52,7 +53,7 @@ const resolvers = {
                     .distinct('branchs')
                     .lean()
             return await Cashbox.find({
-                del: del?true:{$ne: true},
+                del: {$ne: true},
                 ...filter==='active'?{presentCashier: {$ne: null}}:filter==='deactive'?{presentCashier: null}:{},
                 ...search&&search.length?{$or: [
                     {registrationNumber: {'$regex': search, '$options': 'i'}},
@@ -88,7 +89,7 @@ const resolvers = {
         }
         return []
     },
-    cashboxesCount: async(parent, {search, legalObject, branch, filter, del}, {user}) => {
+    cashboxesCount: async(parent, {search, legalObject, branch, filter}, {user}) => {
         if(['admin', 'superadmin', 'управляющий', 'супервайзер'].includes(user.role)||search&&search.length>2&&user.role==='оператор') {
             if(user.legalObject) legalObject = user.legalObject
             let districts = []
@@ -101,7 +102,7 @@ const resolvers = {
             }
             return await Cashbox.countDocuments({
                 ...filter==='active'?{presentCashier: {$ne: null}}:filter==='deactive'?{presentCashier: null}:{},
-                del: del?true:{$ne: true},
+                del: {$ne: true},
                 ...search&&search.length?{$or: [
                     {registrationNumber: {'$regex': search, '$options': 'i'}},
                     {rnmNumber: {'$regex': search, '$options': 'i'}},
@@ -120,6 +121,30 @@ const resolvers = {
                 .lean()
         }
         return 0
+    },
+    cashboxesTrash: async(parent, {skip, search}, {user}) => {
+        if(['admin', 'superadmin'].includes(user.role)) {
+            return await Cashbox.find({
+                ...search&&search.length?{$or: [{rnmNumber: {'$regex': search, '$options': 'i'}}, {name: {'$regex': search, '$options': 'i'}}]}:{},
+                del: true
+            })
+                .skip(skip != undefined ? skip : 0)
+                .limit(skip != undefined ? 30 : 10000000000)
+                .sort('name')
+                .populate({
+                    path: 'presentCashier',
+                    select: 'name _id role'
+                })
+                .populate({
+                    path: 'legalObject',
+                    select: 'name _id'
+                })
+                .populate({
+                    path: 'branch',
+                    select: 'name _id'
+                })
+                .lean()
+        }
     },
     cashbox: async(parent, {_id}, {user}) => {
         if(['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер', 'оператор'].includes(user.role)) {
@@ -278,7 +303,7 @@ const resolversMutation = {
                 let sync = await deleteCashbox(object._id, object.fn)
                 //delete cashbox
                 object.del = true
-                object.branch = null
+                //object.branch = null
                 if(sync) {
                     await object.save()
                     await IntegrationObject.deleteOne({cashbox: _id})

@@ -221,7 +221,7 @@ module.exports.deleteCashbox = async (cashbox, fn)=>{
                 select: 'name'
             })
             .lean()
-        let res = await axios.delete(`${!production||cashbox.legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration?fn=${fn}&uuid=${cashbox.toString()}`, {headers})
+        let res = await axios.delete(`${!production||cashbox.legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration?fn=${fn}&uuid=${cashbox._id.toString()}`, {headers})
         await Cashbox.updateOne({_id: cashbox._id}, {
             $push: {syncData: ['deleteCashbox', JSON.stringify({date: new Date(), ...res.data})]},
             sync: !!res.data.operatorResponse,
@@ -230,6 +230,7 @@ module.exports.deleteCashbox = async (cashbox, fn)=>{
         })
         return !!res.data.fnNumber
     } catch (err) {
+        console.log('error')
         console.error(err.response?err.response.data:err)
         await Cashbox.updateOne({_id: cashbox}, {
             sync: false,
