@@ -16,6 +16,7 @@ const BranchSchema = mongoose.Schema({
 
     name: String,
     address: String,
+    administrativeArea_v2: String,
     locality: String,
     postalCode: String,
     route: String,

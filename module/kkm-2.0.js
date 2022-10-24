@@ -136,8 +136,8 @@ module.exports.registerCashbox = async (branch, cashbox, fn)=>{
         let json = {
             fiscalNumber: fn,
             address: {
-                administrativeArea1: branch.locality,
-                administrativeArea2: '',
+                administrativeArea1: '',
+                administrativeArea2: branch.administrativeArea_v2,
                 country: 'Кыргызстан',
                 locality: branch.locality,
                 postalCode: branch.postalCode,
@@ -178,8 +178,8 @@ module.exports.reregisterCashbox = async (cashbox)=>{
             fiscalNumber: cashbox.fn,
             regNum: cashbox.registrationNumber,
             address: {
-                administrativeArea1: branch.locality,
-                administrativeArea2: '',
+                administrativeArea1: '',
+                administrativeArea2: branch.administrativeArea_v2,
                 country: 'Кыргызстан',
                 locality: branch.locality,
                 postalCode: branch.postalCode,
@@ -230,7 +230,7 @@ module.exports.deleteCashbox = async (cashbox, fn)=>{
             })
             .lean()
         let res = await axios.delete(`${!production||cashbox.legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration?fn=${fn}&uuid=${cashbox._id.toString()}`,
-            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
+            {headers: !production||cashbox.legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
         await Cashbox.updateOne({_id: cashbox._id}, {
             $push: {syncData: ['deleteCashbox', JSON.stringify({date: new Date(), ...res.data})]},
             sync: !!res.data.operatorResponse,

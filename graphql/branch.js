@@ -15,6 +15,7 @@ const type = `
     bType_v2: Int
     pType_v2: Int
     ugns_v2: Int
+    administrativeArea_v2: String
     calcItemAttribute: Int
     
     bType: String
@@ -43,8 +44,8 @@ const query = `
 `;
 
 const mutation = `
-    addBranch(legalObject: ID!, calcItemAttribute: Int!, locality: String!, postalCode: String!, route: String!, streetNumber: String!, address: String!, bType_v2: Int!, pType_v2: Int!, ugns_v2: Int!, name: String!, geo: [Float]): String
-    setBranch(_id: ID!, bType_v2: Int, pType_v2: Int, calcItemAttribute: Int, ugns_v2: Int, name: String, address: String, locality: String, postalCode: String, route: String, streetNumber: String, geo: [Float]): String
+    addBranch(legalObject: ID!, calcItemAttribute: Int!, administrativeArea_v2: String!, locality: String!, postalCode: String!, route: String!, streetNumber: String!, address: String!, bType_v2: Int!, pType_v2: Int!, ugns_v2: Int!, name: String!, geo: [Float]): String
+    setBranch(_id: ID!, bType_v2: Int, pType_v2: Int, calcItemAttribute: Int, administrativeArea_v2: String, ugns_v2: Int, name: String, address: String, locality: String, postalCode: String, route: String, streetNumber: String, geo: [Float]): String
     deleteBranch(_id: ID!): String
     restoreBranch(_id: ID!): String
 `;
@@ -140,12 +141,13 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addBranch: async(parent, {legalObject, address, calcItemAttribute, bType_v2, pType_v2, ugns_v2, name, locality, postalCode, route, streetNumber, geo}, {user}) => {
+    addBranch: async(parent, {legalObject, administrativeArea_v2, address, calcItemAttribute, bType_v2, pType_v2, ugns_v2, name, locality, postalCode, route, streetNumber, geo}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {
             let _object = new Branch({
                 sync: true,
                 legalObject,
                 bType_v2,
+                administrativeArea_v2,
                 pType_v2,
                 address,
                 calcItemAttribute,
@@ -168,8 +170,10 @@ const resolversMutation = {
         }
         return 'ERROR'
     },
-    setBranch: async(parent, {_id, bType_v2, address, pType_v2, calcItemAttribute, ugns_v2, name, locality, postalCode, route, streetNumber, geo}, {user}) => {
-        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())) {
+    setBranch: async(parent, {_id, bType_v2, administrativeArea_v2, address, pType_v2, calcItemAttribute, ugns_v2, name, locality, postalCode, route, streetNumber, geo}, {user}) => {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {
+            if(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())
+                return 'USED_WORKSHIFT'
             let object = await Branch.findById(_id)
             let history = new History({
                 who: user._id,
@@ -187,6 +191,10 @@ const resolversMutation = {
             if(locality){
                 history.what = `${history.what} locality:${object.locality}→${locality};`
                 object.locality = locality
+            }
+            if(administrativeArea_v2){
+                history.what = `${history.what} administrativeArea_v2:${object.administrativeArea_v2}→${administrativeArea_v2};`
+                object.administrativeArea_v2 = administrativeArea_v2
             }
             if(calcItemAttribute!=undefined){
                 history.what = `${history.what} calcItemAttribute:${object.calcItemAttribute}→${calcItemAttribute};`
@@ -233,7 +241,11 @@ const resolversMutation = {
         return 'ERROR'
     },
     deleteBranch: async(parent, { _id }, {user}) => {
-        if(['admin', 'superadmin'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())&&!(await Cashbox.findOne({branch: _id}).select('_id').lean())) {
+        if(['admin', 'superadmin'].includes(user.role)&&user.add) {
+            if(await Cashbox.findOne({branch: _id}).select('_id').lean())
+                return 'USED_CASHBOX'
+            if(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())
+                return 'USED_WORKSHIFT'
             let object = await Branch.findOne({_id})
             object.del = true
             await object.save();
