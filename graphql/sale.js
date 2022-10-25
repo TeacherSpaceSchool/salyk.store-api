@@ -505,7 +505,8 @@ const resolversMutation = {
                     }
                     else if(cashbox.rnmNumber) {
                         let qr = await QRCode.toDataURL(
-                            `https://kkm.salyk.kg/kkm/check?rnmNumber=${cashbox.rnmNumber}&checkNumber=${number}&amount=${amountEnd}&date=${pdQRKKM(newSale.createdAt)}`
+                            `https://kkm.salyk.kg/kkm/check?rnmNumber=${cashbox.rnmNumber}&checkNumber=${number}&amount=${amountEnd}&date=${pdQRKKM(newSale.createdAt)}`,
+                            {errorCorrectionLevel: 'H'}
                         )
                         await Sale.updateOne({_id: newSale._id}, {qr})
                         check(newSale._id)

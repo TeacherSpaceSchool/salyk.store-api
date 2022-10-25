@@ -214,7 +214,8 @@ module.exports.check = async (_id)=>{
         })
     if(!sale.qr)
         sale.qr = await QRCode.toDataURL(
-            `https://kkm.salyk.kg/kkm/check?rnmNumber=${sale.cashbox.rnmNumber}&checkNumber=${sale.number}&amount=${sale.amountEnd}&date=${pdQRKKM(sale.createdAt)}`
+            `https://kkm.salyk.kg/kkm/check?rnmNumber=${sale.cashbox.rnmNumber}&checkNumber=${sale.number}&amount=${sale.amountEnd}&date=${pdQRKKM(sale.createdAt)}`,
+            {errorCorrectionLevel: 'H'}
         )
     try{
         let details = [], tax
