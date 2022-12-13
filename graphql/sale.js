@@ -500,6 +500,7 @@ const resolversMutation = {
                 if(workShift.syncMsg!=='Фискальный режим отключен') {
 
                     if(cashbox.fn) {
+                        console.log(cashbox.fn)
                         let sync = await sendReceipt(newSale._id)
                         await Sale.updateOne({_id: newSale._id}, {syncData: sync.syncData, qr: sync.qr, sync: sync.sync, syncMsg: sync.syncMsg})
                     }
