@@ -3,6 +3,7 @@ const Branch = require('../models/branch');
 const Sale = require('../models/sale');
 const Cashbox = require('../models/cashbox');
 const WorkShift = require('../models/workshift');
+const Report = require('../models/report');
 const ShortLink = require('../models/shortLink');
 const axios = require('axios');
 const {receiptTypes} = require('./kkm-2.0-catalog');
@@ -272,39 +273,45 @@ module.exports.openShift2 = async (fn, legalObject, workShift)=>{
             .select('name')
             .lean()
         let res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/shift/open`, {fnNumber: fn},
-            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
-        return {
+            {
+                timeout: 30000,
+                headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers
+            })
+        await WorkShift.updateOne({_id: workShift}, {
             sync: !!(res.data.fields&&res.data.operatorResponse&&!res.data.operatorResponse.fields[1210]),
-            syncMsg: JSON.stringify(res.data),
-            syncData: JSON.stringify(res.data)
-        }
+            syncData: JSON.stringify(res.data),
+            syncMsg: JSON.stringify(res.data)
+        })
     } catch (err) {
         console.error(err.response?err.response.data:err)
-        return {
+        await WorkShift.updateOne({_id: workShift}, {
             sync: false,
             syncMsg: JSON.stringify(err.response?err.response.data:err)
-        }
+        })
     }
 };
 
-module.exports.closeShift2 = async (fn, legalObject)=>{
+module.exports.closeShift2 = async (fn, legalObject, report)=>{
     try{
         legalObject = await LegalObject.findById(legalObject)
             .select('name')
             .lean()
         let res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/shift/close`, {fnNumber: fn},
-            {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
-        return {
+            {
+                timeout: 30000,
+                headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers
+            })
+        await Report.updateOne({_id: report}, {
             sync: !!(res.data.fields&&res.data.operatorResponse&&!res.data.operatorResponse.fields[1210]),
             syncMsg: JSON.stringify(res.data),
             syncData: JSON.stringify(res.data)
-        }
+        })
     } catch (err) {
         console.error(err.response?err.response.data:err)
-        return {
+        await Report.updateOne({_id: report}, {
             sync: false,
             syncMsg: JSON.stringify(err.response?err.response.data:err)
-        }
+        })
     }
 };
 
@@ -357,7 +364,10 @@ module.exports.sendReceipt = async (sale)=>{
                 })
         }
         let res = await axios.post(`${!production||sale.legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/receipt`, json,
-            {headers: !production||sale.legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
+            {
+                timeout: 30000,
+                headers: !production||sale.legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers
+            })
         let qr
         if(res.data.fields) {
             let date = res.data.fields[1012].replace('KGT ', '')
@@ -376,17 +386,15 @@ module.exports.sendReceipt = async (sale)=>{
                 {errorCorrectionLevel: 'H'}
             )
         }
-        return {
-            sync: !!(res.data.fields&&res.data.operatorResponse&&!res.data.operatorResponse.fields[1210]),
-            syncMsg: JSON.stringify(res.data),
-            qr,
-            syncData: JSON.stringify(res.data)
-        }
+        sale.syncData = JSON.stringify(res.data)
+        sale.syncMsg = JSON.stringify(res.data)
+        sale.qr = qr
+        sale.sync = !!(res.data.fields&&res.data.operatorResponse&&!res.data.operatorResponse.fields[1210])
+        await sale.save()
     } catch (err) {
         console.error(err.response?err.response.data:err)
-        return {
-            sync: false,
-            syncMsg: JSON.stringify(err.response?err.response.data:err)
-        }
+        sale.syncMsg = JSON.stringify(err.response?err.response.data:err)
+        sale.sync = false
+        await sale.save()
     }
 };

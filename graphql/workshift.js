@@ -292,8 +292,7 @@ const endWorkShift = async ({_id, user}) => {
                 if (report.sync) {
                     if(cashbox.fn) {
                         const {closeShift2} = require('../module/kkm-2.0');
-                        let sync = await closeShift2(cashbox.fn, cashbox.legalObject)
-                        await Report.updateOne({_id: report._id}, {syncData: sync.syncData, sync: sync.sync, syncMsg: sync.syncMsg})
+                        closeShift2(cashbox.fn, cashbox.legalObject, report._id)
                     }
                     else {
                         const {zReport} = require('../module/kkm');
@@ -365,10 +364,12 @@ const resolversMutation = {
                 }
                 workShift = await WorkShift.create(workShift)
                 if(workShift.syncMsg!=='Фискальный режим отключен') {
-                    if(cashbox.fn) {
-                        let sync = await openShift2(cashbox.fn, cashbox.legalObject)
-                        await WorkShift.updateOne({_id: workShift._id}, {syncData: sync.syncData, sync: sync.sync, syncMsg: sync.syncMsg})
-                    }
+                    if(cashbox.fn)
+                        openShift2(
+                            cashbox.fn,
+                            cashbox.legalObject,
+                            workShift._id
+                        )
                     else if(cashbox.rnmNumber)
                         openShift({
                             workShift: workShift._id,

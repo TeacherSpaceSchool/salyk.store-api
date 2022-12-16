@@ -494,10 +494,8 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
             await workShift.save()
 
             if(workShift.syncMsg!=='Фискальный режим отключен'){
-                if(cashbox.fn) {
-                    let sync = await sendReceipt(newSale._id)
-                    await Sale.updateOne({_id: newSale._id}, {syncData: sync.syncData, qr: sync.qr, sync: sync.sync, syncMsg: sync.syncMsg})
-                }
+                if(cashbox.fn)
+                    sendReceipt(newSale._id)
                 else if(cashbox.rnmNumber) {
                     let qr = await QRCode.toDataURL(
                         `https://kkm.salyk.kg/kkm/check?rnmNumber=${cashbox.rnmNumber}&checkNumber=${number}&amount=${amountEnd}&date=${pdQRKKM(newSale.createdAt)}`,

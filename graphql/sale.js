@@ -93,7 +93,7 @@ const query = `
 `;
 
 const mutation = `
-    addSale(ndsPrecent: Float!, nspPrecent: Float!, client: ID, sale: ID, comment: String, typePayment: String!, type: String!, paid: Float!, usedPrepayment: Float!, change: Float!, extra: Float!, discount: Float!, amountEnd: Float!, nds: Float!, nsp: Float!, items: [InputItemSale]!): ID
+    addSale(ndsPrecent: Float!, nspPrecent: Float!, nsp: Float!, client: ID, sale: ID, comment: String, typePayment: String!, type: String!, paid: Float!, usedPrepayment: Float!, change: Float!, extra: Float!, discount: Float!, amountEnd: Float!, nds: Float!, items: [InputItemSale]!): ID
 `;
 
 const resolvers = {
@@ -313,6 +313,7 @@ const resolversMutation = {
             if(cashbox&&workShift&&((new Date()-workShift.start)/1000/60/60)<24) {
                 let docType
                 let number = (await Sale.countDocuments({cashbox: cashbox._id}).lean())+1;
+                if(typePayment==='Безналичный') nspPrecent = 0
                 let newSale = new Sale({
                     number,
                     legalObject: user.legalObject,
@@ -322,6 +323,7 @@ const resolversMutation = {
                     workShift: workShift._id,
                     ndsPrecent,
                     nspPrecent,
+                    nsp,
                     client,
                     sale,
                     typePayment,
@@ -332,7 +334,6 @@ const resolversMutation = {
                     discount,
                     amountEnd,
                     nds,
-                    nsp,
                     usedPrepayment,
                     items,
                     comment
@@ -500,9 +501,7 @@ const resolversMutation = {
                 if(workShift.syncMsg!=='Фискальный режим отключен') {
 
                     if(cashbox.fn) {
-                        console.log(cashbox.fn)
-                        let sync = await sendReceipt(newSale._id)
-                        await Sale.updateOne({_id: newSale._id}, {syncData: sync.syncData, qr: sync.qr, sync: sync.sync, syncMsg: sync.syncMsg})
+                        sendReceipt(newSale._id)
                     }
                     else if(cashbox.rnmNumber) {
                         let qr = await QRCode.toDataURL(

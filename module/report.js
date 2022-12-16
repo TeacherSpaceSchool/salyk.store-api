@@ -262,10 +262,8 @@ module.exports.putIntegrationReport = async ({cashbox, legalObject, type}) => {
             report = await Report.create(report)
             if (workShift.syncMsg!=='Фискальный режим отключен') {
                 if (report.sync) {
-                    if(cashbox.fn) {
-                        let sync = await closeShift2(cashbox.fn, cashbox.legalObject)
-                        await Report.updateOne({_id: report._id}, {syncData: sync.syncData, sync: sync.sync, syncMsg: sync.syncMsg})
-                    }
+                    if(cashbox.fn)
+                        closeShift2(cashbox.fn, cashbox.legalObject, report._id)
                     else
                         zReport(report._id)
                 }

@@ -222,10 +222,12 @@ module.exports.putIntegrationOpenWorkshift  = async ({legalObject, cashier, cash
         workShift = await WorkShift.create(workShift)
 
         if(workShift.syncMsg!=='Фискальный режим отключен') {
-            if(cashbox.fn) {
-                let sync = await openShift2(cashbox.fn, cashbox.legalObject)
-                await WorkShift.updateOne({_id: workShift._id}, {syncData: sync.syncData, sync: sync.sync, syncMsg: sync.syncMsg})
-            }
+            if(cashbox.fn)
+                openShift2(
+                    cashbox.fn,
+                    cashbox.legalObject,
+                    workShift._id
+                )
             else if(cashbox.rnmNumber)
                 openShift({
                     workShift: workShift._id,

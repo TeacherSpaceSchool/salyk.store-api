@@ -1,6 +1,7 @@
 const { createAdmin } = require('./user');
 const { createTestLegalObject } = require('./legalObject');
 const { Worker, isMainThread } = require('worker_threads');
+const { syncKKM } = require('../thread/syncKKM');
 const Cashbox = require('../models/cashbox');
 const Branch = require('../models/branch');
 const Sale = require('../models/sale');
@@ -58,6 +59,7 @@ let start = async () => {
     console.log(await SyncKKM.deleteMany({end: null}))
     if((process.env.URL).trim()==='https://salyk.store')
         await startSyncKKM()
+    await syncKKM()
 }
 
 module.exports.start = start;
