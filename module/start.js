@@ -57,9 +57,10 @@ let start = async () => {
     await createAdmin();
     await startResetUnloading()
     console.log(await SyncKKM.deleteMany({end: null}))
-    if((process.env.URL).trim()==='https://salyk.store')
+    if((process.env.URL).trim()==='https://salyk.store') {
         await startSyncKKM()
-    await syncKKM()
+        await syncKKM()
+    }
 }
 
 module.exports.start = start;
