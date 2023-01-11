@@ -39,7 +39,7 @@ const syncKKM = async () => {
 
         let dateEnd = new Date()
         dateEnd.setMinutes(dateEnd.getMinutes()-10)
-        let dateStart = new Date('2022-11-14')
+        let dateStart = new Date('2023-01-01')
         let workShifts = await WorkShift.find({
             sync: {$ne: true},
             syncMsg: {$ne: 'Фискальный режим отключен'},

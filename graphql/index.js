@@ -30,6 +30,7 @@ const ItemBarCode = require('./itemBarCode');
 const LegalObject = require('./legalObject');
 const NotificationStatistic = require('./notificationStatistic');
 const Passport = require('./passport');
+const ShortLink = require('./shortLink');
 const Payment = require('./payment');
 const Review = require('./review');
 const Sale = require('./sale');
@@ -140,6 +141,7 @@ const typeDefs = gql`
         ${Category.query}
         ${Client.query}
         ${ConnectionApplication.query}
+        ${ShortLink.query}
         ${Consignation.query}
         ${WithdrawHistory.query}
         ${History.query}
@@ -203,6 +205,7 @@ const resolvers = {
         ...History.resolvers,
         ...Prepayment.resolvers,
         ...Passport.resolvers,
+        ...ShortLink.resolvers,
         ...Payment.resolvers,
         ...Review.resolvers,
         ...Sale.resolvers,

@@ -13,7 +13,7 @@ const url = 'http://92.62.72.170:30115'
 const urlQRTest = 'http://92.62.72.170:30105'
 const urlQR = 'http://92.62.72.170:30105'
 const QRCode = require('qrcode')
-const {pdDDMMYYHHMM, checkFloat, urlMain} = require('../module/const');
+const {pdDDMMYYHHMM, checkFloat} = require('../module/const');
 const headers = {
     'Content-Type': 'application/json',
     'CCRModel': 'CloudCR',
@@ -374,16 +374,18 @@ module.exports.sendReceipt = async (sale)=>{
             date = new Date(date)
             date = `${date.getFullYear()}${date.getMonth()<9?'0':''}${date.getMonth()+1}${date.getDate()<10?'0':''}${date.getDate()}T${date.getHours()<10?'0':''}${date.getHours()}${date.getMinutes()<10?'0':''}${date.getMinutes()}${date.getSeconds()<10?'0':''}${date.getSeconds()}`
             qr = `${!production||sale.legalObject.name==='Test113 ОсОО Архикойн'?urlQRTest:urlQR}/tax-web-control/client/api/v1/ticket?date=${date}&type=3&operation_type=${res.data.fields[1054]}&fn_number=${res.data.fields[1041]}&fd_number=${res.data.fields[1040]}&fm=${parseInt(res.data.fields[1077], 16)}&tin=${sale.legalObject.inn}&regNumber=${res.data.fields[1037]}&sum=${res.data.fields[1020]}`
-/*
+
             let shortLink = new ShortLink({
                 link: qr
             });
             await ShortLink.create(shortLink)
-            qr = `${urlMain}/sl/${shortLink._id.toString()}`
-*/
+            qr = `http://193.176.239.77/sl/${shortLink._id.toString()}`
+
             qr = await QRCode.toDataURL(
                 qr,
-                {errorCorrectionLevel: 'H'}
+                {
+                    errorCorrectionLevel: 'H',
+                }
             )
         }
         sale.syncData = JSON.stringify(res.data)

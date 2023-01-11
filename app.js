@@ -12,7 +12,6 @@ const compression = require('compression');
 const bodyParser = require('body-parser');
 let graphql  = require('./graphql/index');
 const subscribe = require('./routes/subscribe');
-const sl = require('./routes/sl');
 const push = require('./routes/push');
 const payment = require('./routes/payment');
 const api = require('./routes/api');
@@ -94,7 +93,6 @@ app.use('/subscribe', subscribe);
 app.use('/push', push);
 app.use('/payment', payment);
 app.use('/api', api);
-app.use('/sl', sl);
 
 app.use(function(req, res, next) {
     next(createError(404));
