@@ -43,18 +43,14 @@ const type = `
     comment: String
  }
   type ItemSale {
-        name: String
-        unit: String
-        count: Float
-        price: Float
-        discount: Float
-        extra: Float
-        amountStart: Float
-        amountEnd: Float
-        ndsType: String
-        nds: Float
-        nspType: String
-        nsp: Float
+    name: String
+    unit: String
+    count: Float
+    price: Float
+    discount: Float
+    extra: Float
+    amountStart: Float
+    amountEnd: Float
     tnved: String
     mark: Boolean
   }
@@ -77,10 +73,6 @@ const type = `
         extra: Float
         amountStart: Float
         amountEnd: Float
-        ndsType: String
-        nds: Float
-        nspType: String
-        nsp: Float
     tnved: String
     mark: Boolean
   }

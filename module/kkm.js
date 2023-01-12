@@ -1,4 +1,3 @@
-const ModelsError = require('../models/error');
 const Sale = require('../models/sale');
 const Report = require('../models/report');
 const WorkShift = require('../models/workshift');
@@ -218,26 +217,24 @@ module.exports.check = async (_id)=>{
             {errorCorrectionLevel: 'H'}
         )
     try{
-        let details = [], tax
+        let details = []
+        const tax = {
+            ndsType: '1',
+            nds: 0,
+            nspType: '1',
+            nsp: 0
+        }
         for(let i=0; i<sale.items.length; i++) {
-            if((sale.items[i].ndsType!=undefined||sale.items[i].nspType!=undefined)&&!tax) {
-                tax = {
-                    ...sale.items[i].ndsType != undefined ? {ndsType: ndsTypesKKM[sale.items[i].ndsType]} : {},
-                    ...sale.nds != undefined ? {nds: sale.nds} : {},
-                    ...sale.items[i].nspType != undefined ? {nspType: nspTypesKKM[sale.items[i].nspType]} : {},
-                    ...sale.nsp != undefined ? {nsp: sale.nsp} : {}
-                }
-            }
             details.push({
                 detail: {
                     productName: sale.items[i].name,
                     amount: sale.items[i].count,
                     priceForUnit: sale.items[i].price,
                     sum: sale.items[i].amountEnd,
-                    ...sale.items[i].ndsType!=undefined?{ndsType: ndsTypesKKM[sale.items[i].ndsType]}:{},
-                    ...sale.items[i].nds!=undefined?{nds: sale.items[i].nds}:{},
-                    ...sale.items[i].nspType!=undefined?{nspType: nspTypesKKM[sale.items[i].nspType]}:{},
-                    ...sale.items[i].nsp!=undefined?{nsp: sale.items[i].nsp}:{},
+                    ndsType: '1',
+                    nds: 0,
+                    nspType: '1',
+                    nsp: 0,
                     ...sale.items[i].discount?{discount: sale.items[i].discount}:{},
                     ...sale.items[i].extra?{overprice: sale.items[i].extra}:{}
                 }

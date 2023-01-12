@@ -102,6 +102,12 @@ module.exports.pTypes = [
     'Прочее'
 ]
 
+module.exports.withoutNdsNsp = ['Погашение кредита', 'Аванс', 'Возврат аванса', 'Покупка', 'Возврат покупки']
+
+module.exports.ndsTypesValue = [0, 12]
+
+module.exports.nspTypesValue = [0, 1, 2, 3, 5, 0.5, 1.5]
+
 module.exports.bTypes = [
     '',
     'Розничная торговля широким ассортиментом товаров, в т.ч. продовольственными товарами',
@@ -213,7 +219,7 @@ module.exports.bTypes = [
 
 module.exports.receiptTypes  =  {
     'Продажа': 'INCOME',
-    'Возврат продажи': 'INCOME_RETURN',
+    'Возврат': 'INCOME_RETURN',
     'Погашение кредита': 'INCOME',
     'Аванс': 'INCOME',
     'Возврат аванса': 'INCOME_RETURN',

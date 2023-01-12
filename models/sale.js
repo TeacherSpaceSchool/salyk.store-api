@@ -59,10 +59,6 @@ const SaleSchema = mongoose.Schema({
         discount: Number,
         extra: Number,
         amountEnd: Number,
-        nds: Number,
-        nsp: Number,
-        ndsType: String,
-        nspType: String,
         tnved: String,
         mark: Boolean
     }],

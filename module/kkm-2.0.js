@@ -6,7 +6,7 @@ const WorkShift = require('../models/workshift');
 const Report = require('../models/report');
 const ShortLink = require('../models/shortLink');
 const axios = require('axios');
-const {receiptTypes} = require('./kkm-2.0-catalog');
+const {receiptTypes, withoutNdsNsp} = require('./kkm-2.0-catalog');
 const production = process.env.URL.trim()==='https://salyk.store'
 const urlTest = 'http://92.62.72.170:30115'
 const url = 'http://92.62.72.170:30115'
@@ -44,9 +44,9 @@ const authLogin = async (_id)=>{
                     {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
             else
                 res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/v2/cash-register/auth/refresh`, json, {headers: {
-                    ...!production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers,
-                    'Refresh-Token': legalObject.refreshToken
-                }})
+                        ...!production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers,
+                        'Refresh-Token': legalObject.refreshToken
+                    }})
             await LegalObject.updateOne({_id}, {
                 accessToken: res.data.accessToken,
                 accessTokenTTL: new Date(res.data.accessTokenTTL),
@@ -330,18 +330,22 @@ module.exports.sendReceipt = async (sale)=>{
                 path: 'legalObject',
                 select: 'taxSystem_v2 inn ndsType_v2 nspType_v2 name'
             })
+            .populate({
+                path: 'sale',
+                select: 'syncData'
+            })
         let json = {
             uuid: sale._id.toString(),
             fnNumber: sale.cashbox.fn,
             goods: [],
             taxSums: [
                 {
-                    code: sale.typePayment==='Безналичный'?0:sale.legalObject.nspType_v2,
+                    code: withoutNdsNsp.includes(sale.type)||sale.typePayment==='Безналичный'?0:sale.legalObject.nspType_v2,
                     sum: sale.nsp,
                     type:  'ST'
                 },
                 {
-                    code: sale.legalObject.ndsType_v2,
+                    code: withoutNdsNsp.includes(sale.type)?0:sale.legalObject.ndsType_v2,
                     sum: sale.nds,
                     type: 'VAT'
                 }
@@ -352,17 +356,23 @@ module.exports.sendReceipt = async (sale)=>{
             totalSum: sale.amountEnd,
             operation:  receiptTypes[sale.type]
         }
+        if(sale.sale&&sale.sale.syncData) {
+            let syncData = JSON.parse(sale.sale.syncData)
+            json.originFnSerialNumber = syncData.fields[1041]
+            json.originFdNumber = syncData.fields[1040]
+        }
         for(let i=0; i<sale.items.length; i++) {
             json.goods.push({
-                    calcItemAttributeCode: sale.branch.calcItemAttribute,
-                    cost: sale.items[i].amountEnd,
-                    name: sale.items[i].name,
-                    price: checkFloat(sale.items[i].amountEnd/sale.items[i].count),
-                    quantity: sale.items[i].count,
-                    st: sale.legalObject.nspType_v2,
-                    vat: sale.legalObject.ndsType_v2
-                })
+                calcItemAttributeCode: sale.branch.calcItemAttribute,
+                cost: sale.items[i].amountEnd,
+                name: sale.items[i].name,
+                price: checkFloat(sale.items[i].amountEnd/sale.items[i].count),
+                quantity: sale.items[i].count,
+                st: withoutNdsNsp.includes(sale.type)||sale.typePayment==='Безналичный'?0:sale.legalObject.nspType_v2,
+                vat: withoutNdsNsp.includes(sale.type)?0:sale.legalObject.ndsType_v2
+            })
         }
+
         let res = await axios.post(`${!production||sale.legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/receipt`, json,
             {
                 timeout: 30000,
@@ -393,6 +403,7 @@ module.exports.sendReceipt = async (sale)=>{
         sale.qr = qr
         sale.sync = !!(res.data.fields&&res.data.operatorResponse&&!res.data.operatorResponse.fields[1210])
         await sale.save()
+
     } catch (err) {
         console.error(err.response?err.response.data:err)
         sale.syncMsg = JSON.stringify(err.response?err.response.data:err)
