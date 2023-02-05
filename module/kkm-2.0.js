@@ -6,7 +6,7 @@ const WorkShift = require('../models/workshift');
 const Report = require('../models/report');
 const ShortLink = require('../models/shortLink');
 const axios = require('axios');
-const {receiptTypes, withoutNdsNsp} = require('./kkm-2.0-catalog');
+const {receiptTypes, withoutNdsNsp, ndsTypesValue, nspTypesValue} = require('./kkm-2.0-catalog');
 const production = process.env.URL.trim()==='https://salyk.store'
 const urlTest = 'http://92.62.72.170:30115'
 const url = 'http://92.62.72.170:30115'
@@ -340,12 +340,10 @@ module.exports.sendReceipt = async (sale)=>{
             goods: [],
             taxSums: [
                 {
-                    code: withoutNdsNsp.includes(sale.type)||sale.typePayment==='Безналичный'?0:sale.legalObject.nspType_v2,
                     sum: sale.nsp,
                     type:  'ST'
                 },
                 {
-                    code: withoutNdsNsp.includes(sale.type)?0:sale.legalObject.ndsType_v2,
                     sum: sale.nds,
                     type: 'VAT'
                 }
@@ -368,8 +366,8 @@ module.exports.sendReceipt = async (sale)=>{
                 name: sale.items[i].name,
                 price: checkFloat(sale.items[i].amountEnd/sale.items[i].count),
                 quantity: sale.items[i].count,
-                st: withoutNdsNsp.includes(sale.type)||sale.typePayment==='Безналичный'?0:sale.legalObject.nspType_v2,
-                vat: withoutNdsNsp.includes(sale.type)?0:sale.legalObject.ndsType_v2
+                st: withoutNdsNsp.includes(sale.type)||sale.typePayment==='Безналичный'?0:ndsTypesValue.indexOf(sale.items[i].ndsPrecent),
+                vat: withoutNdsNsp.includes(sale.type)?0:nspTypesValue.indexOf(sale.items[i].nspPrecent)
             })
         }
 

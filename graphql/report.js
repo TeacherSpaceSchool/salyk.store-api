@@ -24,13 +24,6 @@ const type = `
     extra: Float
     cash: Float
     cashless: Float
-    saleAll: Float
-    consignationAll: Float
-    paidConsignationAll: Float
-    prepaymentAll: Float
-    returnedAll: Float
-    buyAll: Float
-    returnedBuyAll: Float
     sale: Float
     saleCount: Float
     consignation: Float
@@ -280,13 +273,6 @@ const resolversMutation = {
                 extra: workShift.extra,
                 cash: workShift.cash,
                 cashless: workShift.cashless,
-                saleAll: cashbox.sale,
-                consignationAll: cashbox.consignation,
-                paidConsignationAll: cashbox.paidConsignation,
-                prepaymentAll: cashbox.prepayment,
-                returnedAll: cashbox.returned,
-                buyAll: cashbox.buy,
-                returnedBuyAll: cashbox.returnedBuy,
                 sale: workShift.sale,
                 saleCount: workShift.saleCount,
                 consignation: workShift.consignation,

@@ -90,7 +90,7 @@ module.exports.getIntegrationReport = async ({UUID, legalObject, type}) => {
         legalObject,
         _id: UUID
     })
-        .select('cashbox branch workShift number start end cashStart cashEnd deposit withdraw discount extra cash cashless sale saleCount consignation consignationCount paidConsignation ' +
+        .select('cashbox branch workShift number start end cashEnd deposit withdraw discount extra cash cashless sale saleCount consignation consignationCount paidConsignation ' +
             'paidConsignationCount prepayment prepaymentCount returned returnedCount buy buyCount returnedBuy returnedBuyCount')
         .lean()
     if(res) {
@@ -164,13 +164,6 @@ module.exports.putIntegrationReport = async ({cashbox, legalObject, type}) => {
                 extra: workShift.extra,
                 cash: workShift.cash,
                 cashless: workShift.cashless,
-                saleAll: cashbox.sale,
-                consignationAll: cashbox.consignation,
-                paidConsignationAll: cashbox.paidConsignation,
-                prepaymentAll: cashbox.prepayment,
-                returnedAll: cashbox.returned,
-                buyAll: cashbox.buy,
-                returnedBuyAll: cashbox.returnedBuy,
                 sale: workShift.sale,
                 saleCount: workShift.saleCount,
                 consignation: workShift.consignation,
@@ -230,13 +223,6 @@ module.exports.putIntegrationReport = async ({cashbox, legalObject, type}) => {
                 extra: workShift.extra,
                 cash: workShift.cash,
                 cashless: workShift.cashless,
-                saleAll: cashbox.sale,
-                consignationAll: cashbox.consignation,
-                paidConsignationAll: cashbox.paidConsignation,
-                prepaymentAll: cashbox.prepayment,
-                returnedAll: cashbox.returned,
-                buyAll: cashbox.buy,
-                returnedBuyAll: cashbox.returnedBuy,
                 sale: workShift.sale,
                 saleCount: workShift.saleCount,
                 consignation: workShift.consignation,

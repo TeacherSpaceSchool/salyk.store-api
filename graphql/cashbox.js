@@ -23,6 +23,8 @@ const type = `
     fn: String
     registrationNumber: String
     syncData: [[String]]
+    paidWork: Boolean
+    fnWork: Boolean
   }
 `;
 
@@ -36,7 +38,6 @@ const query = `
 const mutation = `
     addCashbox(name: String!, fn: String!, legalObject: ID!, branch: ID!): String
     setCashbox(_id: ID!, name: String, branch: ID): String
-    clearCashbox(_id: ID!): String
     deleteCashbox(_id: ID!): String
     restoreCashbox(_id: ID!): String
 `;
@@ -44,31 +45,33 @@ const mutation = `
 const resolvers = {
     cashboxes: async(parent, {skip, search, legalObject, branch, filter, all}, {user}) => {
         if(['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер'].includes(user.role)||(search&&search.length>2||all)&&user.role==='оператор') {
-            if(user.legalObject) legalObject = user.legalObject
+            if (user.legalObject) legalObject = user.legalObject
             let districts = []
-            if(user.role==='супервайзер')
+            if (user.role === 'супервайзер')
                 districts = await District.find({
                     supervisors: user._id,
                 })
                     .distinct('branchs')
                     .lean()
-            return await Cashbox.find({
+            const res = await Cashbox.find({
                 del: {$ne: true},
-                ...filter==='active'?{presentCashier: {$ne: null}}:filter==='deactive'?{presentCashier: null}:{},
-                ...search&&search.length?{$or: [
-                    {registrationNumber: {'$regex': search, '$options': 'i'}},
-                    {rnmNumber: {'$regex': search, '$options': 'i'}},
-                    {name: {'$regex': search, '$options': 'i'}},
-                    {fn: {'$regex': search, '$options': 'i'}}
-                ]}:{},
-                ...legalObject ? {legalObject} : {},
-                ...'кассир'===user.role&&!all||'супервайзер'===user.role||branch?{
-                    $and: [
-                        ...user.role==='супервайзер'?[{branch: {$in: districts}}]:[],
-                        ...user.role==='кассир'?[{branch: user.branch}]:[],
-                        ...branch?[{branch}]:[]
+                ...filter === 'active' ? {presentCashier: {$ne: null}} : filter === 'deactive' ? {presentCashier: null} : {},
+                ...search && search.length ? {
+                    $or: [
+                        {registrationNumber: {'$regex': search, '$options': 'i'}},
+                        {rnmNumber: {'$regex': search, '$options': 'i'}},
+                        {name: {'$regex': search, '$options': 'i'}},
+                        {fn: {'$regex': search, '$options': 'i'}}
                     ]
-                }:{}
+                } : {},
+                ...legalObject ? {legalObject} : {},
+                ...'кассир' === user.role && !all || 'супервайзер' === user.role || branch ? {
+                    $and: [
+                        ...user.role === 'супервайзер' ? [{branch: {$in: districts}}] : [],
+                        ...user.role === 'кассир' ? [{branch: user.branch}] : [],
+                        ...branch ? [{branch}] : []
+                    ]
+                } : {}
             })
                 .skip(skip != undefined ? skip : 0)
                 .limit(skip != undefined ? 30 : 10000000000)
@@ -86,6 +89,11 @@ const resolvers = {
                     select: 'name _id'
                 })
                 .lean()
+            for (let i = 0; i < res.length; i++) {
+                res[i].paidWork = res[i].endPayment&&res[i].endPayment>=new Date()
+                res[i].fnWork = res[i].fnExpiresAt&&res[i].fnExpiresAt>=new Date()
+            }
+            return res
         }
         return []
     },
@@ -175,6 +183,8 @@ const resolvers = {
                     select: 'name _id bType_v2 pType_v2 ugns_v2 calcItemAttribute address'
                 })
                 .lean()
+            res.paidWork = res.endPayment&&res.endPayment>=new Date()
+            res.fnWork = res.fnExpiresAt&&res.fnExpiresAt>=new Date()
             return res
         }
     },
@@ -265,33 +275,6 @@ const resolversMutation = {
                 await History.create(history)
                 return 'OK'
             }
-        }
-        return 'ERROR'
-    },
-    clearCashbox: async(parent, { _id }, {user}) => {
-        if('superadmin'===user.role) {
-            await Cashbox.updateOne(
-                {
-                    _id,
-                    presentCashier: null
-                },
-                {
-                    sale: 0,
-                    consignation: 0,
-                    paidConsignation: 0,
-                    prepayment: 0,
-                    returned: 0,
-                    buy: 0,
-                    returnedBuy: 0
-                }
-            )
-            let history = new History({
-                who: user._id,
-                where: _id,
-                what: 'Обнуление'
-            });
-            await History.create(history)
-            return 'OK'
         }
         return 'ERROR'
     },

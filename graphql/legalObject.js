@@ -8,6 +8,7 @@ const History = require('../models/history');
 const District = require('../models/district');
 const {authLogin} = require('../module/kkm-2.0');
 const {ndsTypes, nspTypes, taxSystems, ugnses} = require('../module/kkm-2.0-catalog');
+const Item = require('../models/item');
 
 const type = `
   type LegalObject {
@@ -41,6 +42,7 @@ const type = `
     accessTokenTTL: Date
     refreshToken: String
     refreshTokenTTL: Date
+    accessTokenExpired: Boolean
   }
 `;
 
@@ -108,6 +110,7 @@ const resolvers = {
                     select: 'name _id'
                 })
                 .lean()
+            res.accessTokenExpired = res.accessToken&&res.accessTokenTTL&&res.accessTokenTTL<new Date()
             return user.role==='кассир'?{
                 _id: res._id,
                 ndsType_v2: res.ndsType_v2,
@@ -125,6 +128,7 @@ const resolversMutation = {
                 inn,
                 taxSystem_v2,
                 ndsType_v2,
+                nspType_v2,
                 address,
                 agent,
                 phone,
@@ -136,7 +140,6 @@ const resolversMutation = {
                 status: 'active',
                 ugns_v2,
                 email,
-                nspType_v2,
                 vatPayer_v2,
                 responsiblePerson,
                 ofd: ['superadmin', 'admin'].includes(user.role)?ofd:true
@@ -148,6 +151,20 @@ const resolversMutation = {
                 legalObject: _object._id
             });
             await CategoryLegalObject.create(categoryLegalObject)
+            let item = new Item({
+                legalObject: _object._id,
+                name: 'Товар',
+                category: undefined,
+                price: 0,
+                unit: 'шт',
+                barCode: '',
+                type: 'товары',
+                editedPrice: true,
+                tnved: '',
+                mark: false,
+                quick: true,
+            });
+            await Item.create(item)
             let history = new History({
                 who: user._id,
                 where: _object._id,

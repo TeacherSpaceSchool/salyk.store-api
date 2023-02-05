@@ -108,7 +108,7 @@ module.exports.getIntegrationWorkShift = async ({UUID, legalObject}) => {
         legalObject,
         _id: UUID
     })
-        .select('number branch cashier cashbox sale consignation paidConsignation prepayment returned cashless cash cashStart cashEnd deposit withdraw ' +
+        .select('number branch cashier cashbox sale consignation paidConsignation prepayment returned cashless cash cashEnd deposit withdraw ' +
             'discount extra start end consignationCount saleCount paidConsignationCount prepaymentCount returnedCount buy buyCount returnedBuy returnedBuyCount')
         .lean()
     if(res) {
@@ -195,8 +195,7 @@ module.exports.putIntegrationOpenWorkshift  = async ({legalObject, cashier, cash
             cash: 0,
             cashless: 0,
             sale: 0,
-            cashStart: cashbox.cash,
-            cashEnd: cashbox.cash,
+            cashEnd: 0,
             deposit: 0,
             extra: 0,
             withdraw: 0,

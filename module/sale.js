@@ -204,7 +204,7 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
     if(
         client&&!mongoose.Types.ObjectId.isValid(client)||
         !['Наличными', 'Безналичный'].includes(typePayment)||
-        !['Продажа', 'Возврат', 'Погашение кредита', 'Аванс', 'Возврат аванса', 'Покупка', 'Возврат покупки'].includes(type)||
+        !['Продажа', 'Возврат продажи', 'Погашение кредита', 'Аванс', 'Возврат аванса', 'Покупка', 'Возврат покупки'].includes(type)||
         paid<0||
         usedPrepayment<0||
         extra<0||
@@ -290,8 +290,8 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
             nsp: withoutNdsNsp.includes(type)||typePayment==='Безналичный'?0:checkFloat(allNsp),
         }
         if(
-            (typePayment==='Наличными'&&['Покупка', 'Возврат аванса', 'Возврат'].includes(type)&&paid>cashbox.cash)||
-            change<0&&['Аванс', 'Погашение кредита', 'Покупка', 'Возврат', 'Возврат покупки', 'Возврат аванса'].includes(type)||
+            (typePayment==='Наличными'&&['Покупка', 'Возврат аванса', 'Возврат продажи'].includes(type)&&paid>cashbox.cash)||
+            change<0&&['Аванс', 'Погашение кредита', 'Покупка', 'Возврат продажи', 'Возврат покупки', 'Возврат аванса'].includes(type)||
             amountEnd<0||
             paid<0
         )
@@ -338,12 +338,10 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
                 if(type==='Кредит') {
                     docType = '8'
                     workShift.consignationCount = checkFloat(workShift.consignationCount + 1)
-                    cashbox.consignation = checkFloat(cashbox.consignation + amountEnd - paid)
                     workShift.consignation = checkFloat(workShift.consignation + amountEnd - paid)
                     if(paid) {
                         workShift.saleCount = checkFloat(workShift.saleCount + 1)
                         workShift.sale = checkFloat(workShift.sale + paid)
-                        cashbox.sale = checkFloat(cashbox.sale + paid)
                     }
                     if(client) {
                         let consignation = await Consignation.findOne({client})
@@ -356,7 +354,6 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
                     docType = '9'
                     workShift.paidConsignationCount = checkFloat(workShift.paidConsignationCount + 1)
                     workShift.paidConsignation = checkFloat(workShift.paidConsignation + amountEnd)
-                    cashbox.paidConsignation = checkFloat(cashbox.paidConsignation + amountEnd)
                     if(client) {
                         let consignation = await Consignation.findOne({client: client})
                         consignation.paid = checkFloat(consignation.paid + amountEnd)
@@ -370,7 +367,6 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
                     docType = '5'
                     workShift.prepaymentCount = checkFloat(workShift.prepaymentCount + 1)
                     workShift.prepayment = checkFloat(workShift.prepayment + amountEnd)
-                    cashbox.prepayment = checkFloat(cashbox.prepayment + amountEnd)
                     if(client) {
                         let prepayment = await Prepayment.findOne({client})
                         prepayment.balance = checkFloat(prepayment.balance + amountEnd)
@@ -382,7 +378,6 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
                     docType = '1'
                     workShift.saleCount = checkFloat(workShift.saleCount + 1)
                     workShift.sale = checkFloat(workShift.sale + amountEnd)
-                    cashbox.sale = checkFloat(cashbox.sale + amountEnd)
                 }
                 if(usedPrepayment) {
                     if(type==='Продажа')
@@ -411,7 +406,6 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
                 }
                 workShift.returnedCount = checkFloat(workShift.returnedCount + 1)
                 workShift.returned = checkFloat(workShift.returned + amountEnd)
-                cashbox.returned = checkFloat(cashbox.returned + amountEnd)
                 if(client) {
                     let prepayment = await Prepayment.findOne({client})
                     prepayment.prepayment = checkFloat(prepayment.prepayment - amountEnd)
@@ -423,11 +417,10 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
                     await prepayment.save()
                 }
             }
-            else if(type==='Возврат'){
+            else if(type==='Возврат продажи'){
                 docType = '3'
                 workShift.returnedCount = checkFloat(workShift.returnedCount + 1)
                 workShift.returned = checkFloat(workShift.returned + amountEnd)
-                cashbox.returned = checkFloat(cashbox.returned + amountEnd)
                 if(typePayment==='Наличными') {
                     cashbox.cash = checkFloat(cashbox.cash - amountEnd)
                     if(cashbox.cash<0)
@@ -464,7 +457,6 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
                         cashbox.cash = 0
                 }
                 workShift.buy = checkFloat(workShift.buy + amountEnd)
-                cashbox.buy = checkFloat(cashbox.buy + amountEnd)
             }
             else if(type==='Возврат покупки'){
                 docType = '4'
@@ -474,7 +466,6 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
                     cashbox.cash = checkFloat(cashbox.cash + amountEnd)
                 }
                 workShift.returnedBuy = checkFloat(workShift.returnedBuy + amountEnd)
-                cashbox.returnedBuy = checkFloat(cashbox.returnedBuy + amountEnd)
                 sale.returned = true
                 await sale.save()
             }

@@ -29,6 +29,7 @@ const type = `
     device: String
     IP: String
     email: [String]
+    enteredExpired: Boolean
     notification: Boolean
  }
 `;
@@ -170,6 +171,8 @@ const resolvers = {
                     select: 'name _id'
                 })
                 .lean()
+            if(res.enteredDate)
+                res.enteredExpired = ((new Date()-res.enteredDate)/1000/60/60)>24
             return res
         }
     },

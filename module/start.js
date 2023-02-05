@@ -2,6 +2,7 @@ const { createAdmin } = require('./user');
 const { createTestLegalObject } = require('./legalObject');
 const { Worker, isMainThread } = require('worker_threads');
 const { syncKKM } = require('../thread/syncKKM');
+const {reductionItems} = require('../module/item');
 const Cashbox = require('../models/cashbox');
 const Branch = require('../models/branch');
 const Sale = require('../models/sale');
@@ -56,6 +57,7 @@ let start = async () => {
     await createTestLegalObject();
     await createAdmin();
     await startResetUnloading()
+    await reductionItems()
     console.log(await SyncKKM.deleteMany({end: null}))
     if((process.env.URL).trim()==='https://salyk.store') {
         await startSyncKKM()

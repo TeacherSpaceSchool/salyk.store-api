@@ -22,34 +22,6 @@ const CashboxSchema = mongoose.Schema({
     fnExpiresAt: Date,
     fn: String,
     del: Boolean,
-    sale: {
-        type: Number,
-        default: 0
-    },
-    consignation: {
-        type: Number,
-        default: 0
-    },
-    paidConsignation: {
-        type: Number,
-        default: 0
-    },
-    prepayment: {
-        type: Number,
-        default: 0
-    },
-    returned: {
-        type: Number,
-        default: 0
-    },
-    buy: {
-        type: Number,
-        default: 0
-    },
-    returnedBuy: {
-        type: Number,
-        default: 0
-    },
     syncType: String,
     sync: Boolean,
     syncMsg: String,

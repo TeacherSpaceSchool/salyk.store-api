@@ -25,7 +25,6 @@ const type = `
     returned: Float
     cashless: Float
     cash: Float
-    cashStart: Float
     cashEnd: Float
     deposit: Float
     withdraw: Float
@@ -43,6 +42,7 @@ const type = `
     returnedBuy: Float
     returnedBuyCount: Int
     sync: Boolean
+    expired: Boolean
     syncMsg: String
     syncData: String
   }
@@ -127,6 +127,12 @@ const resolvers = {
                     select: 'name _id'
                 })
                 .lean()
+            const now = new Date()
+            for(let i=0; i<res.length; i++) {
+                if(!res[i].end){
+                    res[i].expired = ((now-res[i].start)/1000/60/60)>24
+                }
+            }
             return res
         }
     },
@@ -202,7 +208,7 @@ const resolvers = {
                     .distinct('_id')
                     .lean()
             }
-            return await WorkShift.findOne({
+            let res = await WorkShift.findOne({
                 ...user.role==='кассир'? {$and: [{_id: {$in: workShiftsCashier}}, {_id}]}:{_id},
                 ...user.legalObject?{legalObject: user.legalObject}:{},
                 ...user.role==='супервайзер'?{branch: {$in: districts}}:{},
@@ -224,6 +230,10 @@ const resolvers = {
                     select: '_id name address'
                 })
                 .lean()
+            if(!res.end){
+                res.expired = ((new Date()-res.start)/1000/60/60)>24
+            }
+            return res
         }
     },
 };
@@ -256,13 +266,6 @@ const endWorkShift = async ({_id, user}) => {
                 extra: workShift.extra,
                 cash: workShift.cash,
                 cashless: workShift.cashless,
-                saleAll: cashbox.sale,
-                consignationAll: cashbox.consignation,
-                paidConsignationAll: cashbox.paidConsignation,
-                prepaymentAll: cashbox.prepayment,
-                returnedAll: cashbox.returned,
-                buyAll: cashbox.buy,
-                returnedBuyAll: cashbox.returnedBuy,
                 sale: workShift.sale,
                 saleCount: workShift.saleCount,
                 consignation: workShift.consignation,
@@ -340,8 +343,7 @@ const resolversMutation = {
                     cash: 0,
                     cashless: 0,
                     sale: 0,
-                    cashStart: cashbox.cash,
-                    cashEnd: cashbox.cash,
+                    cashEnd: 0,
                     deposit: 0,
                     extra: 0,
                     withdraw: 0,

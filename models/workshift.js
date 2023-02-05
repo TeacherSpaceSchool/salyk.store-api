@@ -20,10 +20,6 @@ const WorkShiftSchema = mongoose.Schema({
     number: String,
     start: Date,
     end: Date,
-    cashStart: {
-        type: Number,
-        default: 0
-    },
     cashEnd: {
         type: Number,
         default: 0

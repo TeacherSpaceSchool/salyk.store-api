@@ -3,7 +3,35 @@ const IntegrationObject = require('../models/integrationObject');
 const ItemBarCode = require('../models/itemBarCode');
 const CategoryLegalObject = require('../models/categoryLegalObject');
 const Category = require('../models/category');
+const LegalObject = require('../models/legalObject');
 const mongoose = require('mongoose');
+
+module.exports.reductionItems = async () => {
+    let date = new Date('2023-02-03T12:00')
+    let items = await Item.find({updatedAt: {$lt: date}}).select('_id').lean()
+    for(let i=0; i<items.length; i++)
+        await Item.updateOne({_id: items[i]}, {ndsType_v2: undefined, nspType_v2: undefined})
+    //товар по умолчанию
+    let legalObjects = await Item.find({name: 'Товар'}).distinct('legalObject').lean();
+    legalObjects = await LegalObject.find({_id: {$nin: legalObjects}}).distinct('_id').lean()
+    console.log(`default item reduction ${legalObjects.length}`)
+    for(let i=0; i<legalObjects.length; i++) {
+        let item = new Item({
+            legalObject: legalObjects[i],
+            name: 'Товар',
+            category: undefined,
+            price: 0,
+            unit: 'шт',
+            barCode: '',
+            type: 'товары',
+            editedPrice: true,
+            tnved: '',
+            mark: false,
+            quick: true,
+        });
+        await Item.create(item)
+    }
+}
 
 module.exports.getIntegrationItems = async ({skip, legalObject}) => {
     let resIntegrationObject = {}, res = []
@@ -56,7 +84,7 @@ module.exports.getIntegrationItem = async ({UUID, legalObject}) => {
     return {status: 'успех', res}
 }
 
-module.exports.putIntegrationItem = async ({legalObject, UUID, newUUID, price, unit, barCode, name, type, code, tnved, mark, del}) => {
+module.exports.putIntegrationItem = async ({legalObject, UUID, newUUID, price, unit, barCode, name, type, tnved, mark, del}) => {
     let item = await IntegrationObject.findOne({
         UUID,
         legalObject,

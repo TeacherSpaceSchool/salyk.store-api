@@ -32,16 +32,24 @@ const type = `
     qr: String
     discount: Float
     amountEnd: Float
-    ndsPrecent: Float
-    nspPrecent: Float
     nds: Float
+    nsp: Float
     sync: Boolean
     syncMsg: String
     syncData: String
-    nsp: Float
     items: [ItemSale]
     comment: String
  }
+  type SalesCount {
+        count: Float
+        sale: Float
+        returned: Float
+        prepayment: Float
+        consignation: Float
+        paidConsignation: Float
+        discount: Float
+        extra: Float
+  }
   type ItemSale {
     name: String
     unit: String
@@ -53,28 +61,26 @@ const type = `
     amountEnd: Float
     tnved: String
     mark: Boolean
-  }
-  type SalesCount {
-        count: Float
-        sale: Float
-        returned: Float
-        prepayment: Float
-        consignation: Float
-        paidConsignation: Float
-        discount: Float
-        extra: Float
+    ndsPrecent: Float
+    nds: Float
+    nspPrecent: Float
+    nsp: Float
   }
   input InputItemSale {
-        name: String
-        unit: String
-        count: Float
-        price: Float
-        discount: Float
-        extra: Float
-        amountStart: Float
-        amountEnd: Float
+    name: String
+    unit: String
+    count: Float
+    price: Float
+    discount: Float
+    extra: Float
+    amountStart: Float
+    amountEnd: Float
     tnved: String
     mark: Boolean
+    ndsPrecent: Float
+    nds: Float
+    nspPrecent: Float
+    nsp: Float
   }
 `;
 
@@ -85,7 +91,7 @@ const query = `
 `;
 
 const mutation = `
-    addSale(ndsPrecent: Float!, nspPrecent: Float!, nsp: Float!, client: ID, sale: ID, comment: String, typePayment: String!, type: String!, paid: Float!, usedPrepayment: Float!, change: Float!, extra: Float!, discount: Float!, amountEnd: Float!, nds: Float!, items: [InputItemSale]!): ID
+    addSale(nsp: Float!, client: ID, sale: ID, comment: String, typePayment: String!, type: String!, paid: Float!, usedPrepayment: Float!, change: Float!, extra: Float!, discount: Float!, amountEnd: Float!, nds: Float!, items: [InputItemSale]!): ID
 `;
 
 const resolvers = {
@@ -119,7 +125,7 @@ const resolvers = {
                 dateEnd = new Date(dateStart)
                 dateEnd.setDate(dateEnd.getDate() + 1)
             }
-            return await Sale.find({
+            let res = await Sale.find({
                 ...dateStart||'супервайзер'===user.role||branch?{
                     $and: [
                         ...dateStart?[{createdAt: {$gte: dateStart}},{createdAt: {$lt: dateEnd}}]:[],
@@ -166,6 +172,7 @@ const resolvers = {
                     select: 'number _id'
                 })
                 .lean()
+            return res
         }
     },
     salesCount: async(parent, {legalObject, branch, cashier, cashbox, client, type, date, workShift}, {user}) => {
@@ -250,62 +257,52 @@ const resolvers = {
         }
     },
     sale: async(parent, {_id, cashbox, number, type}, {user}) => {
-        if(/*['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер'].includes(user.role)*/true) {
-            /*let districts = []
-            if (user.role === 'супервайзер') {
-                districts = await District.find({
-                    supervisors: user._id,
-                })
-                    .distinct('branchs')
-                    .lean()
-            }*/
-            return await Sale.findOne({
-                ...cashbox&&number&&type?{number, cashbox, type: type==='Возврат продажи'?{$in: ['Продажа', 'Кредит']}:type}:{_id},
-                ...user.legalObject ? {legalObject: user.legalObject} : {},
-               // ...'супервайзер' === user.role ? {branch: {$in: districts}} : {},
+        let res = await Sale.findOne({
+            ...cashbox&&number&&type?{number, cashbox, type: type==='Возврат продажи'?{$in: ['Продажа', 'Кредит']}:type}:{_id},
+            ...user.legalObject ? {legalObject: user.legalObject} : {},
+            // ...'супервайзер' === user.role ? {branch: {$in: districts}} : {},
+        })
+            .populate({
+                path: 'cashier',
+                select: 'name _id role'
             })
-                .populate({
-                    path: 'cashier',
-                    select: 'name _id role'
-                })
-                .populate({
-                    path: 'cashbox',
-                    select: 'name _id rnmNumber fnExpiresAt fn'
-                })
-                .populate({
-                    path: 'client',
-                    select: 'name _id'
-                })
-                .populate({
-                    path: 'legalObject',
-                    select: 'name _id inn rateTaxe taxSystem_v2'
-                })
-                .populate({
-                    path: 'branch',
-                    select: 'name address _id'
-                })
-                .populate({
-                    path: 'sale',
-                    select: 'number _id'
-                })
-                .populate({
-                    path: 'workShift',
-                    select: 'number _id'
-                })
-                .lean()
-        }
+            .populate({
+                path: 'cashbox',
+                select: 'name _id rnmNumber fnExpiresAt fn'
+            })
+            .populate({
+                path: 'client',
+                select: 'name _id'
+            })
+            .populate({
+                path: 'legalObject',
+                select: 'name _id inn rateTaxe taxSystem_v2'
+            })
+            .populate({
+                path: 'branch',
+                select: 'name address _id'
+            })
+            .populate({
+                path: 'sale',
+                select: 'number _id'
+            })
+            .populate({
+                path: 'workShift',
+                select: 'number _id'
+            })
+            .lean()
+        return res
     }
 };
 
 const resolversMutation = {
-    addSale: async(parent, {ndsPrecent, nspPrecent, sale, client, typePayment, type, paid, comment, change, extra, discount, items, usedPrepayment, amountEnd, nds, nsp}, {user}) => {
+    addSale: async(parent, {sale, client, typePayment, type, paid, comment, change, extra, discount, items, usedPrepayment, amountEnd, nds, nsp}, {user}) => {
         if('кассир'===user.role&&(!type.includes('Возврат')||sale)&&(!usedPrepayment||sale)) {
             let workShift = await WorkShift.findOne({legalObject: user.legalObject, branch: user.branch, cashier: user._id, end: null})
             let cashbox = await Cashbox.findOne({_id: workShift.cashbox, legalObject: user.legalObject, branch: user.branch})
             if(cashbox&&workShift&&((new Date()-workShift.start)/1000/60/60)<24) {
                 let docType
                 let number = (await Sale.countDocuments({cashbox: cashbox._id}).lean())+1;
-                if(typePayment==='Безналичный') nspPrecent = 0
                 let newSale = new Sale({
                     number,
                     legalObject: user.legalObject,
@@ -313,8 +310,6 @@ const resolversMutation = {
                     cashier: user._id,
                     cashbox: cashbox._id,
                     workShift: workShift._id,
-                    ndsPrecent,
-                    nspPrecent,
                     nsp,
                     client,
                     sale,
@@ -345,12 +340,10 @@ const resolversMutation = {
                     if(type==='Кредит') {
                         docType = '8'
                         workShift.consignationCount = checkFloat(workShift.consignationCount + 1)
-                        cashbox.consignation = checkFloat(cashbox.consignation + amountEnd - paid)
                         workShift.consignation = checkFloat(workShift.consignation + amountEnd - paid)
                         if(paid) {
                             workShift.saleCount = checkFloat(workShift.saleCount + 1)
                             workShift.sale = checkFloat(workShift.sale + paid)
-                            cashbox.sale = checkFloat(cashbox.sale + paid)
                         }
                         if(client) {
                             let consignation = await Consignation.findOne({client})
@@ -363,7 +356,6 @@ const resolversMutation = {
                         docType = '9'
                         workShift.paidConsignationCount = checkFloat(workShift.paidConsignationCount + 1)
                         workShift.paidConsignation = checkFloat(workShift.paidConsignation + amountEnd)
-                        cashbox.paidConsignation = checkFloat(cashbox.paidConsignation + amountEnd)
                         if(client) {
                             let consignation = await Consignation.findOne({client})
                             consignation.paid = checkFloat(consignation.paid + amountEnd)
@@ -377,7 +369,6 @@ const resolversMutation = {
                         docType = '5'
                         workShift.prepaymentCount = checkFloat(workShift.prepaymentCount + 1)
                         workShift.prepayment = checkFloat(workShift.prepayment + amountEnd)
-                        cashbox.prepayment = checkFloat(cashbox.prepayment + amountEnd)
                         if(client) {
                             let prepayment = await Prepayment.findOne({client})
                             prepayment.balance = checkFloat(prepayment.balance + amountEnd)
@@ -389,7 +380,6 @@ const resolversMutation = {
                         docType = '1'
                         workShift.saleCount = checkFloat(workShift.saleCount + 1)
                         workShift.sale = checkFloat(workShift.sale + amountEnd)
-                        cashbox.sale = checkFloat(cashbox.sale + amountEnd)
                     }
                     if(usedPrepayment) {
                         if(type==='Продажа')
@@ -418,7 +408,6 @@ const resolversMutation = {
                     }
                     workShift.returnedCount = checkFloat(workShift.returnedCount + 1)
                     workShift.returned = checkFloat(workShift.returned + amountEnd)
-                    cashbox.returned = checkFloat(cashbox.returned + amountEnd)
                     if(client) {
                         let prepayment = await Prepayment.findOne({client})
                         prepayment.prepayment = checkFloat(prepayment.prepayment - amountEnd)
@@ -430,11 +419,10 @@ const resolversMutation = {
                         await prepayment.save()
                     }
                 }
-                else if(type==='Возврат'){
+                else if(type==='Возврат продажи'){
                     docType = '3'
                     workShift.returnedCount = checkFloat(workShift.returnedCount + 1)
                     workShift.returned = checkFloat(workShift.returned + amountEnd)
-                    cashbox.returned = checkFloat(cashbox.returned + amountEnd)
                     if(typePayment==='Наличными') {
                         cashbox.cash = checkFloat(cashbox.cash - amountEnd)
                         if(cashbox.cash<0)
@@ -471,7 +459,6 @@ const resolversMutation = {
                             cashbox.cash = 0
                     }
                     workShift.buy = checkFloat(workShift.buy + amountEnd)
-                    cashbox.buy = checkFloat(cashbox.buy + amountEnd)
                 }
                 else if(type==='Возврат покупки'){
                     docType = '4'
@@ -481,7 +468,6 @@ const resolversMutation = {
                         cashbox.cash = checkFloat(cashbox.cash + amountEnd)
                     }
                     workShift.returnedBuy = checkFloat(workShift.returnedBuy + amountEnd)
-                    cashbox.returnedBuy = checkFloat(cashbox.returnedBuy + amountEnd)
                     sale.returned = true
                     await sale.save()
                 }

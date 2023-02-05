@@ -24,7 +24,7 @@ const resolvers = {
         if(['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер'].includes(user.role)) {
             let legalObject
             if(user.legalObject) legalObject = user.legalObject
-            return await Consignation.findOne({
+            let res = await Consignation.findOne({
                 $or: [{_id}, {client: _id}],
                 ...legalObject ? {legalObject: legalObject} : {}
             })
@@ -37,6 +37,7 @@ const resolvers = {
                     select: 'name _id'
                 })
                 .lean()
+            return res
         }
     },
     consignations: async(parent, {skip, search, legalObject}, {user}) => {
@@ -48,7 +49,7 @@ const resolvers = {
                     $or: [{name: {'$regex': search, '$options': 'i'}}, {inn: {'$regex': search, '$options': 'i'}}]
                 }).distinct('_id').lean()
             }
-            return await Consignation.find({
+            let res = await Consignation.find({
                 consignation: {$gt: 0},
                 ...search&&search.length?{client: {$in: searchClients}}:{},
                 ...legalObject ? {legalObject: legalObject} : {}
@@ -65,6 +66,7 @@ const resolvers = {
                     select: 'name _id'
                 })
                 .lean()
+            return res
         }
     },
     consignationsCount: async(parent, {search, legalObject}, {user}) => {

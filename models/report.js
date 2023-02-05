@@ -52,34 +52,6 @@ const ReportSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
-    saleAll: {
-        type: Number,
-        default: 0
-    },
-    consignationAll: {
-        type: Number,
-        default: 0
-    },
-    paidConsignationAll: {
-        type: Number,
-        default: 0
-    },
-    prepaymentAll: {
-        type: Number,
-        default: 0
-    },
-    returnedAll: {
-        type: Number,
-        default: 0
-    },
-    buyAll: {
-        type: Number,
-        default: 0
-    },
-    returnedBuyAll: {
-        type: Number,
-        default: 0
-    },
     sale: {
         type: Number,
         default: 0
