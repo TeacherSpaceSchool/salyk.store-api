@@ -56,7 +56,7 @@ const query = `
 
 const mutation = `
     startWorkShift(cashbox: ID!): WorkShift
-    setWorkShift(deposit: Float, withdraw: Float, comment: String): String
+    setWorkShift(_id: ID, deposit: Float, withdraw: Float, comment: String): String
     endWorkShift(_id: ID): ID
 `;
 
@@ -241,8 +241,9 @@ const resolvers = {
 const endWorkShift = async ({_id, user}) => {
     if(['кассир', 'управляющий', 'superadmin', 'супервайзер', 'admin'].includes(user.role)) {
         let workShift = await WorkShift.findOne({
-            ...user.role === 'кассир' ? {branch: user.branch, cashier: user._id} : {_id},
-            ...user.legalObject ? {legalObject: user.legalObject} : {},
+            ...user.role === 'кассир' ? {cashier: user._id} : {_id},
+            ...user.legalObject?{legalObject: user.legalObject}:{},
+            ...user.branch?{branch: user.branch}:{},
             end: null
         })
         let cashbox = await Cashbox.findOne({_id: workShift.cashbox})
@@ -408,9 +409,14 @@ const resolversMutation = {
             }
         }
     },
-    setWorkShift: async(parent, { deposit, withdraw, comment}, {user}) => {
-        if('кассир'===user.role) {
-            let workShift = await WorkShift.findOne({legalObject: user.legalObject, branch: user.branch, cashier: user._id, end: null})
+    setWorkShift: async(parent, {_id, deposit, withdraw, comment}, {user}) => {
+        if(['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер'].includes(user.role)) {
+            let workShift = await WorkShift.findOne({
+                ...user.role==='кассир'? {cashier: user._id}:{_id},
+                ...user.legalObject?{legalObject: user.legalObject}:{},
+                ...user.branch?{branch: user.branch}:{},
+                end: null
+            })
             let cashbox = await Cashbox.findOne({_id: workShift.cashbox})
             if(workShift&&cashbox&&((new Date()-workShift.start)/1000/60/60)<24) {
                 if(deposit) {
