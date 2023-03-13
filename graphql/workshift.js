@@ -255,8 +255,8 @@ const endWorkShift = async ({_id, user}) => {
             let number = (await Report.countDocuments({cashbox: cashbox._id, type: 'Z'}).lean()) + 1;
             let report = new Report({
                 number,
-                branch: workShift.branch,
                 legalObject: cashbox.legalObject,
+                branch: workShift.branch,
                 cashbox: cashbox._id,
                 workShift: workShift._id,
                 type: 'Z',
@@ -311,6 +311,64 @@ const endWorkShift = async ({_id, user}) => {
             return report._id
         }
     }
+}
+
+const setWorkShift = async ({_id, deposit, withdraw, comment, user}) => {
+    if(['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер'].includes(user.role)) {
+        let workShift = await WorkShift.findOne({
+            ...user.role==='кассир'? {cashier: user._id}:{_id},
+            ...user.legalObject?{legalObject: user.legalObject}:{},
+            ...user.branch?{branch: user.branch}:{},
+            end: null
+        })
+        let cashbox = await Cashbox.findOne({_id: workShift.cashbox})
+        if(workShift&&cashbox) {
+            if(deposit) {
+                let number = (await DepositHistory.countDocuments({cashbox: cashbox._id}).lean())+1;
+                let depositHistory = new DepositHistory({
+                    number,
+                    comment,
+                    amount: deposit,
+                    legalObject: workShift.legalObject,
+                    branch: workShift.branch,
+                    cashier: workShift.cashier,
+                    workShift: workShift._id,
+                    cashbox: cashbox._id,
+                    syncMsg: !(await LegalObject.findOne({ofd: true, _id: cashbox.legalObject}).select('ofd').lean())?'Фискальный режим отключен':''
+                });
+                await DepositHistory.create(depositHistory)
+                workShift.deposit = checkFloat(workShift.deposit + deposit)
+                workShift.cashEnd = checkFloat(workShift.cashEnd + deposit)
+                cashbox.cash = checkFloat(cashbox.cash + deposit)
+            }
+            if(workShift.cashEnd>=withdraw&&withdraw) {
+                let number = (await WithdrawHistory.countDocuments({cashbox: cashbox._id}).lean())+1;
+                let withdrawHistory = new WithdrawHistory({
+                    number,
+                    comment,
+                    amount: withdraw,
+                    legalObject: workShift.legalObject,
+                    branch: workShift.branch,
+                    cashier: workShift.cashier,
+                    workShift: workShift._id,
+                    cashbox: cashbox._id,
+                    syncMsg: !(await LegalObject.findOne({ofd: true, _id: cashbox.legalObject}).select('ofd').lean())?'Фискальный режим отключен':''
+                });
+                await WithdrawHistory.create(withdrawHistory)
+                workShift.withdraw = checkFloat(workShift.withdraw + withdraw)
+                workShift.cashEnd = checkFloat(workShift.cashEnd - withdraw)
+                if(workShift.cashEnd<0)
+                    workShift.cashEnd = 0
+                cashbox.cash = checkFloat(cashbox.cash - withdraw)
+                if(cashbox.cash<0)
+                    cashbox.cash = 0
+            }
+            await cashbox.save()
+            await workShift.save();
+            return 'OK'
+        }
+    }
+    return 'ERROR'
 }
 
 const resolversMutation = {
@@ -410,67 +468,14 @@ const resolversMutation = {
         }
     },
     setWorkShift: async(parent, {_id, deposit, withdraw, comment}, {user}) => {
-        if(['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер'].includes(user.role)) {
-            let workShift = await WorkShift.findOne({
-                ...user.role==='кассир'? {cashier: user._id}:{_id},
-                ...user.legalObject?{legalObject: user.legalObject}:{},
-                ...user.branch?{branch: user.branch}:{},
-                end: null
-            })
-            let cashbox = await Cashbox.findOne({_id: workShift.cashbox})
-            if(workShift&&cashbox) {
-                if(deposit) {
-                    let number = (await DepositHistory.countDocuments({cashbox: cashbox._id}).lean())+1;
-                    let depositHistory = new DepositHistory({
-                        number,
-                        comment,
-                        amount: deposit,
-                        legalObject: user.legalObject,
-                        branch: user.branch,
-                        cashier: user._id,
-                        workShift: workShift._id,
-                        cashbox: cashbox._id,
-                        syncMsg: !(await LegalObject.findOne({ofd: true, _id: cashbox.legalObject}).select('ofd').lean())?'Фискальный режим отключен':''
-                    });
-                    await DepositHistory.create(depositHistory)
-                    workShift.deposit = checkFloat(workShift.deposit + deposit)
-                    workShift.cashEnd = checkFloat(workShift.cashEnd + deposit)
-                    cashbox.cash = checkFloat(cashbox.cash + deposit)
-                }
-                if(workShift.cashEnd>=withdraw&&withdraw) {
-                    let number = (await WithdrawHistory.countDocuments({cashbox: cashbox._id}).lean())+1;
-                    let withdrawHistory = new WithdrawHistory({
-                        number,
-                        comment,
-                        amount: withdraw,
-                        legalObject: user.legalObject,
-                        branch: user.branch,
-                        cashier: user._id,
-                        workShift: workShift._id,
-                        cashbox: cashbox._id,
-                        syncMsg: !(await LegalObject.findOne({ofd: true, _id: cashbox.legalObject}).select('ofd').lean())?'Фискальный режим отключен':''
-                    });
-                    await WithdrawHistory.create(withdrawHistory)
-                    workShift.withdraw = checkFloat(workShift.withdraw + withdraw)
-                    workShift.cashEnd = checkFloat(workShift.cashEnd - withdraw)
-                    if(workShift.cashEnd<0)
-                        workShift.cashEnd = 0
-                    cashbox.cash = checkFloat(cashbox.cash - withdraw)
-                    if(cashbox.cash<0)
-                        cashbox.cash = 0
-                }
-                await cashbox.save()
-                await workShift.save();
-                return 'OK'
-            }
-        }
-        return 'ERROR'
+        return await setWorkShift({_id, deposit, withdraw, comment, user})
     },
     endWorkShift: async(parent, {_id}, {user}) => {
         return await endWorkShift({_id, user})
     }
 };
 
+module.exports.setWorkShift = setWorkShift;
 module.exports.endWorkShift = endWorkShift;
 module.exports.resolversMutation = resolversMutation;
 module.exports.mutation = mutation;

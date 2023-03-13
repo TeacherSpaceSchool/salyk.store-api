@@ -16,12 +16,6 @@ const LegalObjectSchema = mongoose.Schema({
     payment: Boolean,
     sync: Boolean,
     syncMsg: String,
-    accessLogin: String,
-    accessPassword: String,
-    accessToken: String,
-    accessTokenTTL: Date,
-    refreshToken: String,
-    refreshTokenTTL: Date,
     ofd: {
         type: Boolean,
         default: true

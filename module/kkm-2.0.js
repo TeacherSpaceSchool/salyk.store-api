@@ -28,53 +28,6 @@ const headersTest = {
     'Api-Key': 'Cur messor velum?'
 }
 
-const authLogin = async (_id)=>{
-    let now = new Date()
-    try{
-        let legalObject = await LegalObject.findById(_id)
-            .select('name accessLogin accessPassword accessToken accessTokenTTL refreshToken refreshTokenTTL')
-            .lean()
-        let json = {
-            login: legalObject.accessLogin,
-            password: legalObject.accessPassword
-        }
-        let res, accessToken = legalObject.accessToken
-        if(!legalObject.refreshTokenTTL||legalObject.refreshTokenTTL<now||legalObject.accessTokenTTL<now) {
-            if (!legalObject.refreshTokenTTL||legalObject.refreshTokenTTL < now)
-                res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/v2/cash-register/auth/login`, json,
-                    {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
-            else
-                res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/v2/cash-register/auth/refresh`, json, {headers: {
-                        ...!production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers,
-                        'Refresh-Token': legalObject.refreshToken
-                    }})
-            await LegalObject.updateOne({_id}, {
-                accessToken: res.data.accessToken,
-                accessTokenTTL: new Date(res.data.accessTokenTTL),
-                refreshToken: res.data.refreshToken,
-                refreshTokenTTL: new Date(res.data.refreshTokenTTL),
-                sync: true,
-                syncMsg: `${pdDDMMYYHHMM(now)} ${JSON.stringify(res.data)}`
-            })
-            accessToken = res.data.accessToken
-        }
-        return accessToken
-    } catch (err) {
-        console.error(err)
-        await LegalObject.updateOne({_id}, {
-            accessToken: null,
-            accessTokenTTL: null,
-            refreshToken: null,
-            refreshTokenTTL: null,
-            sync: false,
-            syncMsg: `${pdDDMMYYHHMM(now)}\n${err.response?JSON.stringify(err.response.data):err.message?err.message:err.errno}`
-        })
-        return null
-    }
-};
-
-module.exports.authLogin = authLogin
-
 module.exports.getDataByInn = async (inn)=>{
     try{
         let res = await axios.get(`${!production?urlTest:url}/api/info/preregister/${inn}`)

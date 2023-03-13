@@ -5,8 +5,6 @@ module.exports.createTestLegalObject = async () => {
     let testLegalObject = await LegalObject.findOne({name: 'Test113 ОсОО Архикойн'}).select('_id').lean()
     if(!testLegalObject){
         let _object = new LegalObject({
-            accessLogin: 'daseron415161@gmail.com',
-            accessPassword: '!12345678',
             name: 'Test113 ОсОО Архикойн',
             inn: '00103201810134',
             address: 'г.Бишкек, Бишкек',
