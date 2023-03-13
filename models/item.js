@@ -19,9 +19,7 @@ const ItemSchema = mongoose.Schema({
     quick: Boolean,
     editedPrice: Boolean,
     tnved: String,
-    mark: Boolean,
-    ndsType_v2: Number,
-    nspType_v2: Number,
+    mark: Boolean
 }, {
     timestamps: true
 });

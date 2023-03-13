@@ -1,4 +1,6 @@
-const {getFnList, deleteFn, reserveFn, getDataByInn} = require('../module/kkm-2.0');
+const {getFnList, deleteFn, reserveFn, getDataByInn, getTaxSystems, getNspTypes, getNdsTypes, getBusinessActivities,
+    getEntrepreneurshipObjects, getTaxAuthorityDepartments, getCalcItemAttributes
+} = require('../module/kkm-2.0');
 
 const type = `
   type INN {
@@ -14,9 +16,20 @@ const type = `
     number: String
     status: String
   }
+  type ObjectKKM {
+    name: String
+    code: Int
+  }
 `;
 
 const query = `
+    taxSystems: [ObjectKKM]
+    nspTypes: [ObjectKKM]
+    ndsTypes: [ObjectKKM]
+    businessActivities: [ObjectKKM]
+    entrepreneurshipObjects: [ObjectKKM]
+    taxAuthorityDepartments: [ObjectKKM]
+    calcItemAttributes: [ObjectKKM]
     tpDataByINNforBusinessActivity(inn: String!): INN
     fns(_id: ID!): [FN]
 `;
@@ -39,6 +52,41 @@ const resolvers = {
     fns: async(parent, {_id}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role))
             return await getFnList(_id)
+        return []
+    },
+    taxSystems: async(parent, args, {user}) => {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role))
+            return await getTaxSystems()
+        return []
+    },
+    nspTypes: async(parent, args, {user}) => {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role))
+            return await getNspTypes()
+        return []
+    },
+    ndsTypes: async(parent, args, {user}) => {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role))
+            return await getNdsTypes()
+        return []
+    },
+    businessActivities: async(parent, args, {user}) => {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role))
+            return await getBusinessActivities()
+        return []
+    },
+    entrepreneurshipObjects: async(parent, args, {user}) => {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role))
+            return await getEntrepreneurshipObjects()
+        return []
+    },
+    taxAuthorityDepartments: async(parent, args, {user}) => {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role))
+            return await getTaxAuthorityDepartments()
+        return []
+    },
+    calcItemAttributes: async(parent, args, {user}) => {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role))
+            return await getCalcItemAttributes()
         return []
     }
 };

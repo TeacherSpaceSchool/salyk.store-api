@@ -12,11 +12,15 @@ const type = `
     createdAt: Date
     legalObject: LegalObject
     
-    bType_v2: Int
-    pType_v2: Int
-    ugns_v2: Int
+    businessActivityCode_v2: Int
+    businessActivityName_v2: String
+    entrepreneurshipObjectCode_v2: Int
+    entrepreneurshipObjectName_v2: String
+    ugnsCode_v2: Int
+    ugnsName_v2: String
+    calcItemAttributeCode_v2: Int
+    calcItemAttributeName_v2: String
     administrativeArea_v2: String
-    calcItemAttribute: Int
     
     bType: String
     pType: String
@@ -44,8 +48,8 @@ const query = `
 `;
 
 const mutation = `
-    addBranch(legalObject: ID!, calcItemAttribute: Int!, administrativeArea_v2: String!, locality: String!, postalCode: String!, route: String!, streetNumber: String!, address: String!, bType_v2: Int!, pType_v2: Int!, ugns_v2: Int!, name: String!, geo: [Float]): String
-    setBranch(_id: ID!, bType_v2: Int, pType_v2: Int, calcItemAttribute: Int, administrativeArea_v2: String, ugns_v2: Int, name: String, address: String, locality: String, postalCode: String, route: String, streetNumber: String, geo: [Float]): String
+    addBranch(legalObject: ID!, locality: String!, postalCode: String!, route: String!, streetNumber: String!, address: String!, businessActivityCode_v2: Int!, businessActivityName_v2: String!, entrepreneurshipObjectCode_v2: Int!, entrepreneurshipObjectName_v2: String!, ugnsCode_v2: Int!, ugnsName_v2: String!, calcItemAttributeCode_v2: Int!, calcItemAttributeName_v2: String!, administrativeArea_v2: String!, name: String!, geo: [Float]): String
+    setBranch(_id: ID!, businessActivityCode_v2: Int, businessActivityName_v2: String, entrepreneurshipObjectCode_v2: Int, entrepreneurshipObjectName_v2: String, ugnsCode_v2: Int, ugnsName_v2: String, calcItemAttributeCode_v2: Int, calcItemAttributeName_v2: String, administrativeArea_v2: String, name: String, address: String, locality: String, postalCode: String, route: String, streetNumber: String, geo: [Float]): String
     deleteBranch(_id: ID!): String
     restoreBranch(_id: ID!): String
 `;
@@ -141,17 +145,21 @@ const resolvers = {
 };
 
 const resolversMutation = {
-    addBranch: async(parent, {legalObject, administrativeArea_v2, address, calcItemAttribute, bType_v2, pType_v2, ugns_v2, name, locality, postalCode, route, streetNumber, geo}, {user}) => {
+    addBranch: async(parent, {legalObject, address, businessActivityCode_v2, businessActivityName_v2, entrepreneurshipObjectCode_v2, entrepreneurshipObjectName_v2, ugnsCode_v2, ugnsName_v2, calcItemAttributeCode_v2, calcItemAttributeName_v2, administrativeArea_v2, name, locality, postalCode, route, streetNumber, geo}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {
             let _object = new Branch({
                 sync: true,
                 legalObject,
-                bType_v2,
+                businessActivityCode_v2,
+                businessActivityName_v2,
+                entrepreneurshipObjectCode_v2,
+                entrepreneurshipObjectName_v2,
+                ugnsCode_v2,
+                ugnsName_v2,
+                calcItemAttributeCode_v2,
+                calcItemAttributeName_v2,
                 administrativeArea_v2,
-                pType_v2,
                 address,
-                calcItemAttribute,
-                ugns_v2,
                 name,
                 locality,
                 postalCode,
@@ -170,7 +178,7 @@ const resolversMutation = {
         }
         return 'ERROR'
     },
-    setBranch: async(parent, {_id, bType_v2, administrativeArea_v2, address, pType_v2, calcItemAttribute, ugns_v2, name, locality, postalCode, route, streetNumber, geo}, {user}) => {
+    setBranch: async(parent, {_id, address, businessActivityCode_v2, businessActivityName_v2, entrepreneurshipObjectCode_v2, entrepreneurshipObjectName_v2, ugnsCode_v2, ugnsName_v2, calcItemAttributeCode_v2, calcItemAttributeName_v2, administrativeArea_v2, name, locality, postalCode, route, streetNumber, geo}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {
             if(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())
                 return 'USED_WORKSHIFT'
@@ -196,9 +204,13 @@ const resolversMutation = {
                 history.what = `${history.what} administrativeArea_v2:${object.administrativeArea_v2}→${administrativeArea_v2};`
                 object.administrativeArea_v2 = administrativeArea_v2
             }
-            if(calcItemAttribute!=undefined){
-                history.what = `${history.what} calcItemAttribute:${object.calcItemAttribute}→${calcItemAttribute};`
-                object.calcItemAttribute = calcItemAttribute
+            if(calcItemAttributeCode_v2!=undefined){
+                history.what = `${history.what} calcItemAttributeCode_v2:${object.calcItemAttributeCode_v2}→${calcItemAttributeCode_v2};`
+                object.calcItemAttributeCode_v2 = calcItemAttributeCode_v2
+            }
+            if(calcItemAttributeName_v2!=undefined){
+                history.what = `${history.what} calcItemAttributeName_v2:${object.calcItemAttributeName_v2}→${calcItemAttributeName_v2};`
+                object.calcItemAttributeName_v2 = calcItemAttributeName_v2
             }
             if(postalCode){
                 history.what = `${history.what} postalCode:${object.postalCode}→${postalCode};`
@@ -212,17 +224,29 @@ const resolversMutation = {
                 history.what = `${history.what} streetNumber:${object.streetNumber}→${streetNumber};`
                 object.streetNumber = streetNumber
             }
-            if(bType_v2!=undefined){
-                history.what = `${history.what} bType_v2:${object.bType_v2}→${bType_v2};`
-                object.bType_v2 = bType_v2
+            if(businessActivityCode_v2!=undefined){
+                history.what = `${history.what} businessActivityCode_v2:${object.businessActivityCode_v2}→${businessActivityCode_v2};`
+                object.businessActivityCode_v2 = businessActivityCode_v2
             }
-            if(ugns_v2!=undefined){
-                history.what = `${history.what} ugns_v2:${object.ugns_v2}→${ugns_v2};`
-                object.ugns_v2 = ugns_v2
+            if(businessActivityName_v2!=undefined){
+                history.what = `${history.what} businessActivityName_v2:${object.businessActivityName_v2}→${businessActivityName_v2};`
+                object.businessActivityName_v2 = businessActivityName_v2
             }
-            if(pType_v2!=undefined){
-                history.what = `${history.what} pType_v2:${object.pType_v2}→${pType_v2};`
-                object.pType_v2 = pType_v2
+            if(ugnsCode_v2!=undefined){
+                history.what = `${history.what} ugnsCode_v2:${object.ugnsCode_v2}→${ugnsCode_v2};`
+                object.ugnsCode_v2 = ugnsCode_v2
+            }
+            if(ugnsName_v2!=undefined){
+                history.what = `${history.what} ugnsName_v2:${object.ugnsName_v2}→${ugnsName_v2};`
+                object.ugnsName_v2 = ugnsName_v2
+            }
+            if(entrepreneurshipObjectCode_v2!=undefined){
+                history.what = `${history.what} entrepreneurshipObjectCode_v2:${object.entrepreneurshipObjectCode_v2}→${entrepreneurshipObjectCode_v2};`
+                object.entrepreneurshipObjectCode_v2 = entrepreneurshipObjectCode_v2
+            }
+            if(entrepreneurshipObjectName_v2!=undefined){
+                history.what = `${history.what} entrepreneurshipObjectName_v2:${object.entrepreneurshipObjectName_v2}→${entrepreneurshipObjectName_v2};`
+                object.entrepreneurshipObjectName_v2 = entrepreneurshipObjectName_v2
             }
             if(geo){
                 history.what = `${history.what} Геолокация;`
@@ -232,8 +256,8 @@ const resolversMutation = {
             await History.create(history)
 
             let cashboxes = await Cashbox.find({branch: _id, del: {$ne: true}}).lean()
-            for(let i=0; i<cashboxes.length; i++) {
-                await reregisterCashbox(cashboxes[i])
+            for (let i = 0; i < cashboxes.length; i++) {
+                await reregisterCashbox(cashboxes[i], calcItemAttributeName_v2?1:0)
             }
 
             return 'OK'

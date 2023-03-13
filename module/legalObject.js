@@ -12,17 +12,21 @@ module.exports.createTestLegalObject = async () => {
             address: 'г.Бишкек, Бишкек',
             phone: [],
             status: 'active',
-            ugns_v2: 2,
             email: [],
             responsiblePerson: 'test',
             ofd: true,
-            taxSystem_v2: 0,
-            ndsType_v2: 1,
-            nspType_v2: 4,
-            vatPayer_v2: true,
             sync: true,
             syncMsg: '',
-            taxpayerType_v2: 'ENTITY'
+            taxpayerType_v2: 'ENTITY',
+
+            taxSystemName_v2: 'Общий налоговый режим',
+            taxSystemCode_v2: 0,
+            ndsTypeCode_v2: 1,
+            ndsTypeRate_v2: 12,
+            nspTypeCode_v2: 1,
+            nspTypeRate_v2: 1,
+            ugns_v2: 2,
+            vatPayer_v2: true
         });
         _object = await LegalObject.create(_object)
         let categoryLegalObject = new CategoryLegalObject({

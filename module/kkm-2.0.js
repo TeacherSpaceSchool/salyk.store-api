@@ -6,7 +6,7 @@ const WorkShift = require('../models/workshift');
 const Report = require('../models/report');
 const ShortLink = require('../models/shortLink');
 const axios = require('axios');
-const {receiptTypes, withoutNdsNsp, ndsTypesValue, nspTypesValue} = require('./kkm-2.0-catalog');
+const {receiptTypes} = require('./kkm-2.0-catalog');
 const production = process.env.URL.trim()==='https://salyk.store'
 const urlTest = 'http://92.62.72.170:30115'
 const url = 'http://92.62.72.170:30115'
@@ -14,6 +14,7 @@ const urlQRTest = 'http://92.62.72.170:30105'
 const urlQR = 'http://92.62.72.170:30105'
 const QRCode = require('qrcode')
 const {pdDDMMYYHHMM, checkFloat} = require('../module/const');
+const {checkInt} = require("./const");
 const headers = {
     'Content-Type': 'application/json',
     'CCRModel': 'CloudCR',
@@ -151,17 +152,17 @@ module.exports.registerCashbox = async (branch, cashbox, fn)=>{
             },
             vatPayer: legalObject.vatPayer_v2,
             calcItemAttributes: [
-                branch.calcItemAttribute
+                branch.calcItemAttributeCode_v2
             ],
             taxSystems: [
-                legalObject.taxSystem_v2
+                legalObject.taxSystemCode_v2
             ],
-            serialNumber: 'SS000001',
-            version: '1',
+            serialNumber: 'SS000002',
+            version: '2',
             storeName: branch.name,
-            entrepreneurshipObject: branch.pType_v2===62?999:branch.pType_v2,
-            businessActivity: branch.bType_v2===105?999:branch.bType_v2,
-            taxAuthorityDepartment: branch.ugns_v2
+            entrepreneurshipObject: branch.entrepreneurshipObjectCode_v2,
+            businessActivity: branch.businessActivityCode_v2,
+            taxAuthorityDepartment: branch.ugnsCode_v2
         }
         let res = await axios.post(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration`, json,
             {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
@@ -172,7 +173,7 @@ module.exports.registerCashbox = async (branch, cashbox, fn)=>{
     }
 };
 
-module.exports.reregisterCashbox = async (cashbox)=>{
+module.exports.reregisterCashbox = async (cashbox, updateReasons)=>{
     try{
         let branch = await Branch.findById(cashbox.branch)
             .lean()
@@ -192,17 +193,19 @@ module.exports.reregisterCashbox = async (cashbox)=>{
                 location: [branch.geo[0].toString().slice(0, 10), branch.geo[1].toString().slice(0, 10)].toString(),
             },
             vatPayer: legalObject.vatPayer_v2,
-            calcItemAttributes: branch.calcItemAttributes,
+            calcItemAttributes: [
+                branch.calcItemAttributeCode_v2
+            ],
             taxSystems: [
-                legalObject.taxSystem_v2
+                legalObject.taxSystemCode_v2
             ],
             storeName: branch.name,
             updateReasons: [
-                0
+                updateReasons?updateReasons:0
             ],
-            entrepreneurshipObject: branch.pType_v2===62?999:branch.pType_v2,
-            businessActivity: branch.bType_v2===105?999:branch.bType_v2,
-            taxAuthorityDepartment: branch.ugns_v2
+            entrepreneurshipObject: branch.entrepreneurshipObjectCode_v2,
+            businessActivity: branch.businessActivityCode_v2,
+            taxAuthorityDepartment: branch.ugnsCode_v2
         }
         let res = await axios.put(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/service-api/cash-register/registration`, json,
             {headers: !production||legalObject.name==='Test113 ОсОО Архикойн'?headersTest:headers})
@@ -324,11 +327,11 @@ module.exports.sendReceipt = async (sale)=>{
             })
             .populate({
                 path: 'branch',
-                select: 'calcItemAttribute'
+                select: 'calcItemAttributeCode_v2'
             })
             .populate({
                 path: 'legalObject',
-                select: 'taxSystem_v2 inn ndsType_v2 nspType_v2 name'
+                select: 'taxSystemCode_v2 inn ndsTypeCode_v2 nspTypeCode_v2 name'
             })
             .populate({
                 path: 'sale',
@@ -340,18 +343,20 @@ module.exports.sendReceipt = async (sale)=>{
             goods: [],
             taxSums: [
                 {
-                    sum: sale.nsp,
+                    code: sale.legalObject.nspTypeCode_v2,
+                    sum: checkInt(sale.nsp*100),
                     type:  'ST'
                 },
                 {
-                    sum: sale.nds,
+                    code: sale.legalObject.ndsTypeCode_v2,
+                    sum: checkInt(sale.nds*100),
                     type: 'VAT'
                 }
             ],
-            taxSystem: sale.legalObject.taxSystem_v2,
-            totalCashSum: sale.typePayment==='Наличными'?sale.amountEnd:0,
-            totalCashlessSum: sale.typePayment!=='Наличными'?sale.amountEnd:0,
-            totalSum: sale.amountEnd,
+            taxSystem: sale.legalObject.taxSystemCode_v2,
+            totalCashSum: sale.typePayment==='Наличными'?checkInt(sale.amountEnd*100):0,
+            totalCashlessSum: sale.typePayment!=='Наличными'?checkInt(sale.amountEnd*100):0,
+            totalSum: checkInt(sale.amountEnd*100),
             operation:  receiptTypes[sale.type]
         }
         if(sale.sale&&sale.sale.syncData) {
@@ -361,13 +366,13 @@ module.exports.sendReceipt = async (sale)=>{
         }
         for(let i=0; i<sale.items.length; i++) {
             json.goods.push({
-                calcItemAttributeCode: sale.branch.calcItemAttribute,
-                cost: sale.items[i].amountEnd,
+                calcItemAttributeCode: sale.branch.calcItemAttributeCode_v2,
+                cost: checkInt(sale.items[i].amountEnd*100),
                 name: sale.items[i].name,
-                price: checkFloat(sale.items[i].amountEnd/sale.items[i].count),
+                price: checkInt((sale.items[i].amountEnd/sale.items[i].count)*100),
                 quantity: sale.items[i].count,
-                st: withoutNdsNsp.includes(sale.type)||sale.typePayment==='Безналичный'?0:ndsTypesValue.indexOf(sale.items[i].ndsPrecent),
-                vat: withoutNdsNsp.includes(sale.type)?0:nspTypesValue.indexOf(sale.items[i].nspPrecent)
+                st: sale.legalObject.nspTypeCode_v2,
+                vat: sale.legalObject.ndsTypeCode_v2
             })
         }
 
@@ -407,5 +412,151 @@ module.exports.sendReceipt = async (sale)=>{
         sale.syncMsg = JSON.stringify(err.response?err.response.data:err)
         sale.sync = false
         await sale.save()
+    }
+};
+
+module.exports.getTaxSystems = async (legalObject)=>{
+    try{
+        let res = await axios.get(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/info/tax-systems`)
+        res = !res.data[0]?[]:res.data
+        let list = []
+        for(let i=0; i<res.length; i++) {
+            list.push({
+                code: res[i].code,
+                name: res[i].taxName
+            })
+        }
+        return list
+    } catch (err) {
+        console.error(err.response?err.response.data:err)
+        return []
+    }
+};
+
+module.exports.getTaxRates = async ()=>{
+    try{
+        let res = await axios.get(`${!production?urlTest:url}/api/info/tax-rates`)
+        res = !res.data[0]?[]:res.data
+        let list = []
+        for(let i=0; i<res.length; i++) {
+            list.push({
+                code: res[i].code,
+                name: res[i].taxName
+            })
+        }
+        return list
+    } catch (err) {
+        console.error(err.response?err.response.data:err)
+        return []
+    }
+};
+
+module.exports.getNdsTypes = async ()=>{
+    try{
+        let res = await axios.get(`${!production?urlTest:url}/api/info/tax-rates`)
+        res = !res.data[0]?[]:res.data
+        let list = []
+        for(let i=0; i<res.length; i++) {
+            if(res[i].taxRateType==='VAT')
+                list.push({
+                    code: res[i].code,
+                    name: res[i].taxRateValue
+                })
+        }
+        return list
+    } catch (err) {
+        console.error(err.response?err.response.data:err)
+        return []
+    }
+};
+
+module.exports.getNspTypes = async ()=>{
+    try{
+        let res = await axios.get(`${!production?urlTest:url}/api/info/tax-rates`)
+        res = !res.data[0]?[]:res.data
+        let nspTypes = []
+        for(let i=0; i<res.length; i++) {
+            if(res[i].taxRateType==='ST')
+                nspTypes.push({
+                    code: res[i].code,
+                    name: res[i].taxRateValue
+                })
+        }
+        return nspTypes
+    } catch (err) {
+        console.error(err.response?err.response.data:err)
+        return []
+    }
+};
+
+module.exports.getBusinessActivities = async ()=>{
+    try{
+        let res = await axios.get(`${!production?urlTest:url}/api/info/business-activities`)
+        res = !res.data[0]?[]:res.data
+        let list = []
+        for(let i=0; i<res.length; i++) {
+            list.push({
+                code: res[i].code,
+                name: res[i].name
+            })
+        }
+        return list
+    } catch (err) {
+        console.error(err.response?err.response.data:err)
+        return []
+    }
+};
+
+module.exports.getEntrepreneurshipObjects = async ()=>{
+    try{
+        let res = await axios.get(`${!production?urlTest:url}/api/info/entrepreneurship-objects`)
+        res = !res.data[0]?[]:res.data
+        let list = []
+        for(let i=0; i<res.length; i++) {
+            list.push({
+                code: res[i].code,
+                name: res[i].name
+            })
+        }
+        return list
+    } catch (err) {
+        console.error(err.response?err.response.data:err)
+        return []
+    }
+};
+
+module.exports.getTaxAuthorityDepartments = async ()=>{
+    try{
+        let res = await axios.get(`${!production?urlTest:url}/api/info/tax-authority-departments`)
+        res = !res.data[0]?[]:res.data
+        let list = []
+        for(let i=0; i<res.length; i++) {
+            list.push({
+                code: res[i].code,
+                name: res[i].name
+            })
+        }
+        return list
+    } catch (err) {
+        console.error(err.response?err.response.data:err)
+        return []
+    }
+};
+
+module.exports.getCalcItemAttributes = async ()=>{
+    try{
+        let res = await axios.get(`${!production?urlTest:url}/api/info/calc-item-attributes`)
+        res = !res.data[0]?[]:res.data
+        let list = []
+        for(let i=0; i<res.length; i++) {
+            list.push({
+                code: res[i].code,
+                name: res[i].attributeName
+            })
+        }
+        return list
+    } catch (err) {
+        console.error(err.response?err.response.data:err)
+        return []
     }
 };

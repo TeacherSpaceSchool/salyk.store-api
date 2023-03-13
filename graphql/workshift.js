@@ -223,7 +223,7 @@ const resolvers = {
                 })
                 .populate({
                     path: 'legalObject',
-                    select: '_id name inn rateTaxe taxSystem_v2'
+                    select: '_id name inn rateTaxe taxSystemName_v2'
                 })
                 .populate({
                     path: 'branch',
@@ -418,7 +418,7 @@ const resolversMutation = {
                 end: null
             })
             let cashbox = await Cashbox.findOne({_id: workShift.cashbox})
-            if(workShift&&cashbox&&((new Date()-workShift.start)/1000/60/60)<24) {
+            if(workShift&&cashbox) {
                 if(deposit) {
                     let number = (await DepositHistory.countDocuments({cashbox: cashbox._id}).lean())+1;
                     let depositHistory = new DepositHistory({

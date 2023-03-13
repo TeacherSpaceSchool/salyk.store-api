@@ -176,11 +176,11 @@ const resolvers = {
                 })
                 .populate({
                     path: 'legalObject',
-                    select: 'name _id inn taxSystem_v2 vatPayer_v2'
+                    select: 'name _id inn taxSystemName_v2 vatPayer_v2'
                 })
                 .populate({
                     path: 'branch',
-                    select: 'name _id bType_v2 pType_v2 ugns_v2 calcItemAttribute address'
+                    select: 'name _id businessActivityName_v2 entrepreneurshipObjectName_v2 ugnsName_v2 calcItemAttributeName_v2 address'
                 })
                 .lean()
             res.paidWork = res.endPayment&&res.endPayment>=new Date()

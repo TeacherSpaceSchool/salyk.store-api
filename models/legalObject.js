@@ -31,9 +31,12 @@ const LegalObjectSchema = mongoose.Schema({
         ref: 'UserSALYK'
     },
     //v2
-    taxSystem_v2: Number,
-    ndsType_v2: Number,
-    nspType_v2: Number,
+    taxSystemName_v2: String,
+    taxSystemCode_v2: Number,
+    ndsTypeCode_v2: Number,
+    ndsTypeRate_v2: Number,
+    nspTypeCode_v2: Number,
+    nspTypeRate_v2: Number,
     ugns_v2: Number,
     vatPayer_v2: Boolean,
     taxpayerType_v2: String,

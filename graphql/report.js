@@ -210,7 +210,7 @@ const resolvers = {
             })
                 .populate({
                     path: 'legalObject',
-                    select: 'name inn _id rateTaxe taxSystem_v2'
+                    select: 'name inn _id rateTaxe taxSystemName_v2'
                 })
                 .populate({
                     path: 'branch',

@@ -6,9 +6,15 @@ const BranchSchema = mongoose.Schema({
         ref: 'LegalObjectSALYK'
     },
 
-    bType_v2: Number,
-    pType_v2: Number,
-    ugns_v2: Number,
+    businessActivityCode_v2: Number,
+    businessActivityName_v2: String,
+    entrepreneurshipObjectCode_v2: Number,
+    entrepreneurshipObjectName_v2: String,
+    ugnsCode_v2: Number,
+    ugnsName_v2: String,
+    calcItemAttributeCode_v2: Number,
+    calcItemAttributeName_v2: String,
+    administrativeArea_v2: String,
 
     bType: String,
     pType: String,
@@ -16,12 +22,10 @@ const BranchSchema = mongoose.Schema({
 
     name: String,
     address: String,
-    administrativeArea_v2: String,
     locality: String,
     postalCode: String,
     route: String,
     streetNumber: String,
-    calcItemAttribute: Number,
     status: String,
     geo: [Number],
     uniqueId: String,

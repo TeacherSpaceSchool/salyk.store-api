@@ -37,21 +37,6 @@ module.exports.month = [
     'ноябрь',
     'декабрь'
 ]
-module.exports.ndsTypes = {
-    'Без НДС': 0,
-    'Ставка НДС 12%': 12,
-    'Ставка НДС 0%': 0,
-    'Освобожденная от НДС': 0,
-}
-module.exports.nspTypes = {
-    'Без НСП': 0,
-    'НСП 0%': 0,
-    'НСП 1%': 1,
-    'НСП 2%': 2,
-    'НСП 3%': 3,
-    'НСП 5%': 5,
-
-}
 
 module.exports.statsCollection = async (collection) => {
     return (await (require(collection)).collection.stats())

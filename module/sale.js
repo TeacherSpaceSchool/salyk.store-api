@@ -10,7 +10,6 @@ const Prepayment = require('../models/prepayment');
 const mongoose = require('mongoose');
 const { check } = require('./kkm');
 const { sendReceipt } = require('./kkm-2.0');
-const { ndsTypesValue, nspTypesValue, withoutNdsNsp } = require('./kkm-2.0-catalog');
 const QRCode = require('qrcode')
 
 module.exports.getIntegrationSales = async ({legalObject, skip, date, type, branch, cashbox, client, cashier, workShift}) => {
@@ -218,10 +217,10 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
             status: 'ошибка'
         }
     if(cashbox&&workShift&&((new Date()-workShift.start)/1000/60/60)<24) {
-        let ndsPrecent = checkFloat(ndsTypesValue[legalObject.ndsType_v2])
-        let nspPrecent = checkFloat(nspTypesValue[legalObject.nspType_v2])
+        let ndsPrecent = legalObject.ndsTypeRate_v2
+        let nspPrecent = legalObject.nspTypeRate_v2
         let allPrecent = 100+ndsPrecent+nspPrecent
-        let amountEnd = 0, discountAll = 0, extraAll = 0;
+        let amountEnd = 0, discountAll = 0, extraAll = 0, allNds = 0, allNsp = 0;
         if(extra) {
             extra = extra / items.length
         }
@@ -242,16 +241,14 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
                 items[i].discount<0||
                 items[i].extra<0
             )
-                return {
-                    status: 'ошибка'
-                }
+                return {status: 'ошибка'}
 
             items[i].amountStart = checkFloat(items[i].count*items[i].price)
             items[i].amountEnd = checkFloat(items[i].amountStart + items[i].extra - items[i].discount)
-            if(typePayment==='Безналичный'&&type==='Продажа'){
-                let nsp = checkFloat(items[i].amountEnd / allPrecent * nspPrecent)
-                items[i].amountEnd = checkFloat(items[i].amountEnd - nsp)
-            }
+            let nds = checkFloat(items[i].amountEnd/allPrecent*ndsPrecent)
+            allNds += nds
+            let nsp = checkFloat(items[i].amountEnd/allPrecent*nspPrecent)
+            allNsp += nsp
             items[i] = {
                 name: items[i].name,
                 unit: items[i].unit,
@@ -263,14 +260,16 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
                 amountEnd: items[i].amountEnd,
                 tnved: items[i].tnved,
                 mark: items[i].mark,
+                ndsPrecent,
+                nds,
+                nspPrecent,
+                nsp
             }
             amountEnd += items[i].amountEnd
             discountAll = checkFloat(discountAll + items[i].discount)
             extraAll = checkFloat(extraAll + items[i].extra)
         }
         let change = checkFloat((paid+('Продажа'===type?usedPrepayment:0)) - amountEnd)
-        const allNds = checkFloat(amountEnd / allPrecent * ndsPrecent);
-        const allNsp = checkFloat(amountEnd / allPrecent * nspPrecent);
         let _sale = {
             ndsPrecent: ndsPrecent,
             nspPrecent: nspPrecent,
@@ -286,8 +285,8 @@ module.exports.putIntegrationSale = async ({workShift, sale, client, typePayment
             amountEnd,
             usedPrepayment: 'Продажа'===type?usedPrepayment:0,
             comment,
-            nds: withoutNdsNsp.includes(type)?0:checkFloat(allNds),
-            nsp: withoutNdsNsp.includes(type)||typePayment==='Безналичный'?0:checkFloat(allNsp),
+            nds: checkFloat(allNds),
+            nsp: checkFloat(allNsp),
         }
         if(
             (typePayment==='Наличными'&&['Покупка', 'Возврат аванса', 'Возврат продажи'].includes(type)&&paid>cashbox.cash)||

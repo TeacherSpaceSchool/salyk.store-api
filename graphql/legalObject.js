@@ -6,9 +6,9 @@ const WorkShift = require('../models/workshift');
 const User = require('../models/user');
 const History = require('../models/history');
 const District = require('../models/district');
-const {authLogin} = require('../module/kkm-2.0');
-const {ndsTypes, nspTypes, taxSystems, ugnses} = require('../module/kkm-2.0-catalog');
+const {authLogin, reregisterCashbox} = require('../module/kkm-2.0');
 const Item = require('../models/item');
+const Cashbox = require('../models/cashbox');
 
 const type = `
   type LegalObject {
@@ -27,9 +27,12 @@ const type = `
     syncMsg: String
     agent: User
     
-    taxSystem_v2: Int
-    ndsType_v2: Int
-    nspType_v2: Int
+    taxSystemName_v2: String
+    taxSystemCode_v2: Int
+    ndsTypeCode_v2: Int
+    ndsTypeRate_v2: Int
+    nspTypeCode_v2: Int
+    nspTypeRate_v2: Int
     ugns_v2: Int
     vatPayer_v2: Boolean
     taxpayerType_v2: String
@@ -54,8 +57,8 @@ const query = `
 `;
 
 const mutation = `
-    addLegalObject(name: String!, accessLogin: String!, taxSystem_v2: Int!, taxpayerType_v2: String!, ndsType_v2: Int!, nspType_v2: Int!, ugns_v2: Int!, vatPayer_v2: Boolean!, accessPassword: String!, agent: ID, ofd: Boolean!, inn: String!, address: String!, email: [String]!, phone: [String]!, responsiblePerson: String!): String
-    setLegalObject(_id: ID!, name: String, accessLogin: String, accessPassword: String, taxpayerType_v2: String, taxSystem_v2: Int, ndsType_v2: Int, nspType_v2: Int, ugns_v2: Int, vatPayer_v2: Boolean, agent: ID, ofd: Boolean, address: String, email: [String], phone: [String], responsiblePerson: String): String
+    addLegalObject(name: String!, accessLogin: String!, taxSystemName_v2: String!, taxSystemCode_v2: Int!, taxpayerType_v2: String!, ndsTypeCode_v2: Int!, ndsTypeRate_v2: Int!, nspTypeCode_v2: Int!, nspTypeRate_v2: Int!, ugns_v2: Int!, vatPayer_v2: Boolean!, accessPassword: String!, agent: ID, ofd: Boolean!, inn: String!, address: String!, email: [String]!, phone: [String]!, responsiblePerson: String!): String
+    setLegalObject(_id: ID!, name: String, accessLogin: String, accessPassword: String, taxpayerType_v2: String, taxSystemName_v2: String, taxSystemCode_v2: Int, ndsTypeCode_v2: Int, ndsTypeRate_v2: Int, nspTypeCode_v2: Int, nspTypeRate_v2: Int, ugns_v2: Int, vatPayer_v2: Boolean, agent: ID, ofd: Boolean, address: String, email: [String], phone: [String], responsiblePerson: String): String
     onoffLegalObject(_id: ID!): String
     deleteLegalObject(_id: ID!): String
     restoreLegalObject(_id: ID!): String
@@ -113,22 +116,25 @@ const resolvers = {
             res.accessTokenExpired = res.accessToken&&res.accessTokenTTL&&res.accessTokenTTL<new Date()
             return user.role==='кассир'?{
                 _id: res._id,
-                ndsType_v2: res.ndsType_v2,
-                nspType_v2: res.nspType_v2,
+                ndsTypeRate_v2: res.ndsTypeRate_v2,
+                nspTypeRate_v2: res.nspTypeRate_v2,
             }:res
         }
     },
 };
 
 const resolversMutation = {
-    addLegalObject: async(parent, {name, accessLogin, accessPassword, taxpayerType_v2, taxSystem_v2, ndsType_v2, nspType_v2, ugns_v2, vatPayer_v2, agent, inn, address, phone, email, responsiblePerson, ofd}, {user}) => {
+    addLegalObject: async(parent, {name, accessLogin, accessPassword, taxpayerType_v2, taxSystemName_v2, taxSystemCode_v2, ndsTypeCode_v2, ndsTypeRate_v2, nspTypeCode_v2, nspTypeRate_v2, ugns_v2, vatPayer_v2, agent, inn, address, phone, email, responsiblePerson, ofd}, {user}) => {
         if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add&&!(await LegalObject.findOne({inn}).select('_id').lean())&&name!=='Test113 ОсОО Архикойн') {
             let _object = new LegalObject({
                 name,
                 inn,
-                taxSystem_v2,
-                ndsType_v2,
-                nspType_v2,
+                taxSystemName_v2,
+                taxSystemCode_v2,
+                ndsTypeCode_v2,
+                ndsTypeRate_v2,
+                nspTypeCode_v2,
+                nspTypeRate_v2,
                 address,
                 agent,
                 phone,
@@ -175,8 +181,10 @@ const resolversMutation = {
         }
         return 'ERROR'
     },
-    setLegalObject: async(parent, {_id, agent, accessLogin, accessPassword, name, taxpayerType_v2, taxSystem_v2, ndsType_v2, nspType_v2, ugns_v2, vatPayer_v2, address, phone, email, ofd, responsiblePerson}, {user}) => {
-        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add&&!(await WorkShift.findOne({branch: _id, end: null}).select('_id').lean())) {
+    setLegalObject: async(parent, {_id, agent, accessLogin, accessPassword, name, taxpayerType_v2, taxSystemName_v2, taxSystemCode_v2, ndsTypeCode_v2, ndsTypeRate_v2, nspTypeCode_v2, nspTypeRate_v2, ugns_v2, vatPayer_v2, address, phone, email, ofd, responsiblePerson}, {user}) => {
+        if(['admin', 'superadmin', 'оператор'].includes(user.role)&&user.add) {
+            if(await WorkShift.findOne({legalObject: _id, end: null}).select('_id').lean())
+                return 'USED_WORKSHIFT'
             let object = await LegalObject.findById(_id)
             let history = new History({
                 who: user._id,
@@ -213,17 +221,29 @@ const resolversMutation = {
                 history.what = `${history.what} address:${object.address}→${address};`
                 object.address = address
             }
-            if(ndsType_v2!=undefined){
-                history.what = `${history.what} ndsType_v2:${ndsTypes[object.ndsType_v2]}→${ndsTypes[ndsType_v2]};`
-                object.ndsType_v2 = ndsType_v2
+            if(ndsTypeCode_v2!=undefined){
+                history.what = `${history.what} ndsTypeCode_v2:${object.ndsTypeCode_v2}→${ndsTypeCode_v2};`
+                object.ndsTypeCode_v2 = ndsTypeCode_v2
             }
-            if(nspType_v2!=undefined){
-                history.what = `${history.what} nspType_v2:${nspTypes[object.nspType_v2]}→${nspTypes[nspType_v2]};`
-                object.nspType_v2 = nspType_v2
+            if(ndsTypeRate_v2!=undefined){
+                history.what = `${history.what} ndsTypeRate_v2:${object.ndsTypeRate_v2}→${ndsTypeRate_v2};`
+                object.ndsTypeRate_v2 = ndsTypeRate_v2
             }
-            if(taxSystem_v2!=undefined){
-                history.what = `${history.what} taxSystem_v2:${taxSystems[object.taxSystem_v2]}→${taxSystems[taxSystem_v2]};`
-                object.taxSystem_v2 = taxSystem_v2
+            if(nspTypeCode_v2!=undefined){
+                history.what = `${history.what} nspTypeCode_v2:${object.nspTypeCode_v2}→${nspTypeCode_v2};`
+                object.nspTypeCode_v2 = nspTypeCode_v2
+            }
+            if(nspTypeRate_v2!=undefined){
+                history.what = `${history.what} nspTypeRate_v2:${object.nspTypeRate_v2}→${nspTypeRate_v2};`
+                object.nspTypeRate_v2 = nspTypeRate_v2
+            }
+            if(taxSystemName_v2!=undefined){
+                history.what = `${history.what} taxSystemName_v2:${object.taxSystemName_v2}→${taxSystemName_v2};`
+                object.taxSystemName_v2 = taxSystemName_v2
+            }
+            if(taxSystemCode_v2!=undefined){
+                history.what = `${history.what} taxSystemCode_v2:${object.taxSystemCode_v2}→${taxSystemCode_v2};`
+                object.taxSystemCode_v2 = taxSystemCode_v2
             }
             if(phone){
                 history.what = `${history.what} phone:${object.phone}→${phone};`
@@ -234,7 +254,7 @@ const resolversMutation = {
                 object.vatPayer_v2 = vatPayer_v2
             }
             if(ugns_v2!=undefined){
-                history.what = `${history.what} ugns_v2:${ugnses[object.ugns_v2]}→${ugnses[ugns_v2]};`
+                history.what = `${history.what} ugns_v2:${object.ugns_v2}→${ugns_v2};`
                 object.ugns_v2 = ugns_v2
             }
             if(responsiblePerson){
@@ -253,6 +273,12 @@ const resolversMutation = {
             let now = new Date()
             if(!object.refreshToken||object.accessTokenTTL<now||object.refreshTokenTTL<now)
                 await authLogin(object._id)
+            if(vatPayer_v2!=undefined||taxSystemCode_v2) {
+                let cashboxes = await Cashbox.find({legalObject: _id, del: {$ne: true}}).lean()
+                for (let i = 0; i < cashboxes.length; i++) {
+                    await reregisterCashbox(cashboxes[i], 1)
+                }
+            }
             await History.create(history)
             return 'OK'
         }

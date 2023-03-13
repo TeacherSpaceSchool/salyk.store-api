@@ -7,10 +7,6 @@ const LegalObject = require('../models/legalObject');
 const mongoose = require('mongoose');
 
 module.exports.reductionItems = async () => {
-    let date = new Date('2023-02-03T12:00')
-    let items = await Item.find({updatedAt: {$lt: date}}).select('_id').lean()
-    for(let i=0; i<items.length; i++)
-        await Item.updateOne({_id: items[i]}, {ndsType_v2: undefined, nspType_v2: undefined})
     //товар по умолчанию
     let legalObjects = await Item.find({name: 'Товар'}).distinct('legalObject').lean();
     legalObjects = await LegalObject.find({_id: {$nin: legalObjects}}).distinct('_id').lean()

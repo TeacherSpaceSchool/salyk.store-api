@@ -21,8 +21,6 @@ const type = `
     tnved: String
     mark: Boolean
     priority: Int
-    ndsType_v2: Int
-    nspType_v2: Int
  }
 `;
 
@@ -33,8 +31,8 @@ const query = `
 `;
 
 const mutation = `
-    addItem(legalObject: ID!, category: ID, ndsType_v2: Int, nspType_v2: Int, quick: Boolean!, priority: Int!, price: Float!, tnved: String!, mark: Boolean!, editedPrice: Boolean!, unit: String!, barCode: String, name: String!, type: String!): String
-    setItem(_id: ID!, category: ID, tnved: String, ndsType_v2: Int, nspType_v2: Int, mark: Boolean, quick: Boolean, priority: Int, price: Float, editedPrice: Boolean, unit: String, barCode: String, name: String, type: String): String
+    addItem(legalObject: ID!, category: ID, quick: Boolean!, priority: Int!, price: Float!, tnved: String!, mark: Boolean!, editedPrice: Boolean!, unit: String!, barCode: String, name: String!, type: String!): String
+    setItem(_id: ID!, category: ID, tnved: String, mark: Boolean, quick: Boolean, priority: Int, price: Float, editedPrice: Boolean, unit: String, barCode: String, name: String, type: String): String
     deleteItem(_id: ID!): String
 `;
 
@@ -159,14 +157,13 @@ const resolvers = {
                     select: 'name _id'
                 })
                 .lean()
-            console.log(res.ndsType_v2, res.nspType_v2)
             return res
         }
     }
 };
 
 const resolversMutation = {
-    addItem: async(parent, {legalObject, quick, category, price, unit, ndsType_v2, nspType_v2, barCode, name, type, editedPrice, tnved, mark, priority}, {user}) => {
+    addItem: async(parent, {legalObject, quick, category, price, unit, barCode, name, type, editedPrice, tnved, mark, priority}, {user}) => {
         if(['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер'].includes(user.role)&&user.add) {
             if(user.legalObject) legalObject = user.legalObject
             if(category) {
@@ -192,8 +189,6 @@ const resolversMutation = {
                 quick,
                 editedPrice,
                 tnved,
-                ndsType_v2,
-                nspType_v2,
                 mark
             });
             if(barCode&&barCode.length&&!(await ItemBarCode.findOne({barCode}).select('_id').lean())){
@@ -205,7 +200,7 @@ const resolversMutation = {
         }
         return 'ERROR'
     },
-    setItem: async(parent, {_id, category, ndsType_v2, nspType_v2, quick, price, unit, barCode, name, type, editedPrice, tnved, mark, priority}, {user}) => {
+    setItem: async(parent, {_id, category, quick, price, unit, barCode, name, type, editedPrice, tnved, mark, priority}, {user}) => {
         if(['admin', 'superadmin', 'управляющий', 'кассир', 'супервайзер'].includes(user.role)&&user.add) {
             let object = await Item.findOne({
                 ...user.legalObject?{legalObject: user.legalObject}:{},
@@ -221,8 +216,6 @@ const resolversMutation = {
             if(priority!=undefined)object.priority = priority
             if(price!=undefined)object.price = price
             if(editedPrice!=undefined)object.editedPrice = editedPrice
-            if(ndsType_v2!=undefined)object.ndsType_v2 = ndsType_v2
-            if(nspType_v2!=undefined)object.nspType_v2 = nspType_v2
             if(category!=object.category) {
                 let categoryLegalObject = await CategoryLegalObject.findOne({legalObject: object.legalObject})
                 if (object.category) {

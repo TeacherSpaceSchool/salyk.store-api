@@ -276,7 +276,7 @@ const resolvers = {
             })
             .populate({
                 path: 'legalObject',
-                select: 'name _id inn rateTaxe taxSystem_v2'
+                select: 'name _id inn rateTaxe taxSystemName_v2'
             })
             .populate({
                 path: 'branch',
@@ -284,7 +284,8 @@ const resolvers = {
             })
             .populate({
                 path: 'sale',
-                select: 'number _id'
+                select: 'number _id cashbox',
+                populate: {path: 'cashbox', select: 'fn'}
             })
             .populate({
                 path: 'workShift',
