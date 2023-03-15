@@ -346,6 +346,7 @@ module.exports.sendReceipt = async (sale)=>{
             });
             await ShortLink.create(shortLink)
             qr = `http://193.176.239.77/sl/${shortLink._id.toString()}`
+            sale.qrURL = `http://193.176.239.77/sl/${shortLink._id.toString()}`
 
             qr = await QRCode.toDataURL(
                 qr,

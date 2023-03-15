@@ -21,6 +21,7 @@ const type = `
     workShift: WorkShift
     client: Client
     sale: Sale
+    qrURL: String
     typePayment: String
     type: String
     returned: Boolean

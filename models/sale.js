@@ -48,6 +48,7 @@ const SaleSchema = mongoose.Schema({
     nsp: Number,
     docType: String,
     qr: String,
+    qrURL: String,
     items: [{
         nds: Number,
         nsp: Number,
