@@ -17,7 +17,7 @@ const {getIntegrationWithdraws, getIntegrationWithdraw, putIntegrationWithdraw} 
 const {getIntegrationReports, getIntegrationReport, putIntegrationReport} = require('../module/report');
 
 let verifiedLegalObject = async (req, res, action, params) => {
-    res.set('Content+Type', 'application/json');
+    res.set('Content-Type', 'application/json');
     try{
         if(req.body.password){
             let legalObject = await Integration.findOne({

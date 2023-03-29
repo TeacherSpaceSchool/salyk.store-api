@@ -369,9 +369,9 @@ module.exports.sendReceipt = async (sale)=>{
     }
 };
 
-module.exports.getTaxSystems = async (legalObject)=>{
+module.exports.getTaxSystems = async ()=>{
     try{
-        let res = await axios.get(`${!production||legalObject.name==='Test113 ОсОО Архикойн'?urlTest:url}/api/info/tax-systems`)
+        let res = await axios.get(`${!production?urlTest:url}/api/info/tax-systems`)
         res = !res.data[0]?[]:res.data
         let list = []
         for(let i=0; i<res.length; i++) {
