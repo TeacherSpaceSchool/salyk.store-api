@@ -285,8 +285,7 @@ const resolvers = {
             })
             .populate({
                 path: 'sale',
-                select: 'number _id cashbox',
-                populate: {path: 'cashbox', select: 'fn'}
+                select: 'number _id syncData',
             })
             .populate({
                 path: 'workShift',
