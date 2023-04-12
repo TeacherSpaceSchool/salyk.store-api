@@ -344,7 +344,7 @@ module.exports.sendReceipt = async (sale)=>{
             qr = await QRCode.toDataURL(
                 qr,
                 {
-                    errorCorrectionLevel: 'H',
+                    errorCorrectionLevel: 'L',
                 }
             )
         }
