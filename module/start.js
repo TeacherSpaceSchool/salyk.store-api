@@ -3,12 +3,6 @@ const { createTestLegalObject } = require('./legalObject');
 const { Worker, isMainThread } = require('worker_threads');
 const { syncKKM } = require('../thread/syncKKM');
 const {reductionItems} = require('../module/item');
-const Cashbox = require('../models/cashbox');
-const Branch = require('../models/branch');
-const Sale = require('../models/sale');
-const WorkShift = require('../models/workshift');
-const Report = require('../models/report');
-const LegalObject = require('../models/legalObject');
 const SyncKKM = require('../models/syncKKM');
 
 let startResetUnloading = async () => {
@@ -42,24 +36,12 @@ let startSyncKKM = async () => {
 }
 
 let start = async () => {
-/*
-    let dateStart = new Date()
-    dateStart.setMonth(11)
-    dateStart.setDate(1)
-    dateStart.setYear(2021)
-    let legalObject = (await LegalObject.findOne({inn: '00103201810134'}).select('_id').lean())._id
-    console.log(await Cashbox.updateMany({legalObject, createdAt: {$gt: dateStart}}, {sync: false}))
-    console.log(await Branch.updateMany({legalObject, createdAt: {$gt: dateStart}}, {sync: false}))
-    console.log(await Sale.updateMany({legalObject, createdAt: {$gt: dateStart}}, {sync: false}))
-    console.log(await WorkShift.updateMany({legalObject, createdAt: {$gt: dateStart}}, {sync: false}))
-    console.log(await Report.updateMany({legalObject, createdAt: {$gt: dateStart}}, {sync: false}))
-*/
     await createTestLegalObject();
     await createAdmin();
     await startResetUnloading()
     await reductionItems()
     console.log(await SyncKKM.deleteMany({end: null}))
-    if((process.env.URL).trim()==='https://salyk.store') {
+    if((process.env.URL).trim()!=='http://localhost') {
         await startSyncKKM()
         await syncKKM()
     }

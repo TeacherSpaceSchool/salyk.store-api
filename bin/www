@@ -17,7 +17,7 @@ if (cluster.isMaster) {
 } else {
 
 
-    let port = normalizePort(process.env.URL.trim()==='https://salyk.store'?'4444':'3000');
+    let port = normalizePort(process.env.URL.trim()==='http://localhost'?'3000':'4444');
     app.set('port', port);
 
 

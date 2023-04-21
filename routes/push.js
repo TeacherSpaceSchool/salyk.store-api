@@ -9,7 +9,7 @@ router.get('/admin', async (req, res) => {
     try{
         let user = await User.findOne({role: {$regex: 'admin', $options: 'i'}}).select('_id').lean()
         if(user){
-            sendWebPush({title: 'SALYK.STORE', message: 'Не забудьте сделать свой заказ', user: user._id})
+            sendWebPush({title: 'SuperKassa', message: 'Не забудьте сделать свой заказ', user: user._id})
             res.json('Push triggered');
         }
         else {
@@ -29,7 +29,7 @@ router.get('/admin', async (req, res) => {
 
 router.get('/all', async(req, res) => {
     try{
-        sendWebPush({title: 'SALYK.STORE', message: 'Не забудьте сделать свой заказ', user: 'all'})
+        sendWebPush({title: 'SuperKassa', message: 'Не забудьте сделать свой заказ', user: 'all'})
         res.json('Push triggered');
     } catch (err) {
         let _object = new ModelsError({

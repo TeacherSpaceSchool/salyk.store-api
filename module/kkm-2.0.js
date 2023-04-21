@@ -6,7 +6,7 @@ const WorkShift = require('../models/workshift');
 const Report = require('../models/report');
 const axios = require('axios');
 const {receiptTypes} = require('./kkm-2.0-catalog');
-const production = process.env.URL.trim()==='https://salyk.store'
+const production = process.env.URL.trim()!=='http://localhost'
 const urlTest = 'http://92.62.72.170:30115'
 const url = 'http://92.62.72.170:30115'
 const urlQRTest = 'http://92.62.72.170:30105'

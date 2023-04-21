@@ -2,16 +2,16 @@ const Subscriber = require('../models/subscriber');
 const User = require('../models/user');
 const q = require('q');
 const webPush = require('web-push');
-const keys = require((process.env.URL).trim()==='https://salyk.store'?'./../config/keys_prod':'./../config/keys_dev');
+const keys = require((process.env.URL).trim()==='http://localhost'?'./../config/keys_dev':'./../config/keys_prod');
 const NotificationStatistic = require('../models/notificationStatistic');
 
 let sendWebPush = async({title, message, tag, url, icon, user}) => {
     const payload = {
         title: title?title:title,
         message: message?message:message,
-        url: url?url:'https://salyk.store',
-        icon: icon?icon:'https://salyk.store/192x192.png',
-        tag: tag?tag:'salyk.store'
+        url: url?url:'https://superkassa.kg',
+        icon: icon?icon:'https://superkassa.kg/192x192.png',
+        tag: tag?tag:'superkassa.kg'
     };
     if(user==='all'){
         let _object = new NotificationStatistic({
@@ -41,7 +41,7 @@ let sendWebPush = async({title, message, tag, url, icon, user}) => {
                         const pushPayload = JSON.stringify(payload);
                         const pushOptions = {
                             vapidDetails: {
-                                subject: 'https://salyk.store',
+                                subject: 'https://superkassa.kg',
                                 privateKey: keys.privateKey,
                                 publicKey: keys.publicKey
                             },
@@ -116,7 +116,7 @@ let sendWebPush = async({title, message, tag, url, icon, user}) => {
                         const pushPayload = JSON.stringify(payload);
                         const pushOptions = {
                             vapidDetails: {
-                                subject: 'https://salyk.store',
+                                subject: 'https://superkassa.kg',
                                 privateKey: keys.privateKey,
                                 publicKey: keys.publicKey
                             },
